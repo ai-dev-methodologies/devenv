@@ -1,7 +1,7 @@
 ---
 name: lean
-description: Turn on lean mode, which keeps the main context small. Reports shrink, delegated work returns only its core, and hooks refuse large reads and outputs. Applies to this project, or to this session only. Use when the user asks for lean mode or to save context.
-argument-hint: "on | on session | status"
+description: Lean mode keeps the main context small: short reports, short returns from delegated work, hooks that refuse large reads and outputs. With no argument it turns lean mode on for this project; `session` limits it to this session, `status` only reports. Use when the user asks for lean mode.
+argument-hint: "[on | session | status]"
 allowed-tools: Bash(devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py *)
 ---
 
@@ -14,23 +14,31 @@ and compaction until it is turned off.
 
 ## Turning it on and reading its state
 
-Run the command for the argument and answer in one line with the scope it printed:
+With no argument, this skill turns lean mode on for this project. Run the command for the argument:
 
-| Argument | Command |
-|---|---|
-| `on` | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean on --cwd ${CLAUDE_PROJECT_DIR} --py ${user_config.python}` |
-| `on session` | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean on --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} --py ${user_config.python}` |
-| `status` or nothing | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean status --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} --py ${user_config.python}` |
+| Argument | Effect | Command |
+|---|---|---|
+| nothing, or `on` | turns lean mode on for this project | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean on --cwd ${CLAUDE_PROJECT_DIR} --py ${user_config.python}` |
+| `session` or `on session` | turns lean mode on for this session only | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean on --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} --py ${user_config.python}` |
+| `status` | reports the state and turns nothing on | `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/devenv_state.py lean status --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} --py ${user_config.python}` |
+| `off`, or any argument that asks to turn it off | answers with one line, "To turn lean mode off, type `/devenv:lean-off` yourself.", and changes nothing | none |
 
-- `on` covers this project folder and every folder inside it, in every session.
-- `on session` covers this session only; other sessions in the project keep their own state.
+- The project setting covers this project folder and every folder inside it, in every session. Its key
+  is the git project of `${CLAUDE_PROJECT_DIR}`: the main worktree of a linked worktree, else the git
+  toplevel, else the folder itself.
+- The session setting covers this session only; other sessions in the project keep their own state.
+- Any other argument: answer with the four usages in one line (`/devenv:lean`, `/devenv:lean session`,
+  `/devenv:lean status`, `/devenv:lean-off`) and run nothing.
 - The script prints one JSON line (`on`, `since`, `scope`). Exit 3 means the state file is unreadable:
   report the `error` value as printed and change nothing.
+- After turning it on, answer in one line with the scope the script printed and the project folder
+  `${CLAUDE_PROJECT_DIR}`, for example `lean on (project: /work/app)`, and say once that the user turns
+  it off by typing `/devenv:lean-off`. For `status`, answer in one line with the printed state.
 - The script is the only writer of the state file. Never write the state file with the Write or Edit
   tool.
 
 Turning lean off is the user's own step: the user types `/devenv:lean-off` themselves. This skill
-never turns it off. For the argument `off`, answer with that one line and run nothing.
+never turns it off.
 
 ## While lean mode is on
 

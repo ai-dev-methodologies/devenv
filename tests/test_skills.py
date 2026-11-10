@@ -87,6 +87,43 @@ class LeanSkillTests(test_docs.Base):
         self.assertIsNone(OFF_CALL.search(self.raw), "the lean skill must not run the off command")
         self.has("the user types `/devenv:lean-off` themselves")
 
+    def test_no_argument_turns_lean_on_for_this_project(self):
+        self.matches(r"(?i)With no argument, this skill turns lean mode on for this project")
+
+    def test_argument_table_rows(self):
+        on = STATE_CALL + " lean on --cwd ${CLAUDE_PROJECT_DIR} " + test_docs.PY_OPTION
+        session = (STATE_CALL + " lean on --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} "
+                   + test_docs.PY_OPTION)
+        status = (STATE_CALL + " lean status --cwd ${CLAUDE_PROJECT_DIR} --session ${CLAUDE_SESSION_ID} "
+                  + test_docs.PY_OPTION)
+        rows = {}
+        for line in body(self.raw).splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if line.startswith("|") and len(cells) == 3 and not set(cells[0]) <= set("-"):
+                rows[cells[0]] = cells[1:]
+        self.assertIn("nothing, or `on`", rows)
+        self.assertEqual(f"`{on}`", rows["nothing, or `on`"][1])
+        self.assertIn("`session` or `on session`", rows)
+        self.assertEqual(f"`{session}`", rows["`session` or `on session`"][1])
+        self.assertIn("`status`", rows)
+        self.assertEqual(f"`{status}`", rows["`status`"][1])
+        self.assertRegex(rows["`status`"][0], r"(?i)turns nothing on")
+        off = [cells for key, cells in rows.items() if "`off`" in key]
+        self.assertEqual(1, len(off), rows)
+        self.assertIn("`/devenv:lean-off`", off[0][0])
+        self.assertNotIn("devenv_state.py", off[0][1])
+        self.assertFalse([k for k in rows if "nothing" in k and k != "nothing, or `on`"], rows)
+
+    def test_on_answer_names_scope_project_and_the_off_skill(self):
+        self.matches(r"(?s)After turning it on, answer in one line with the scope.{0,200}?`\$\{CLAUDE_PROJECT_DIR\}`"
+                     r".{0,300}?`/devenv:lean-off`")
+
+    def test_argument_hint_and_description(self):
+        fields = test_docs.frontmatter(self.raw)
+        self.assertEqual('"[on | session | status]"', fields.get("argument-hint"))
+        self.assertRegex(fields["description"], r"(?i)with no argument it turns lean mode on for this project")
+        self.assertLessEqual(len(fields["description"]), 300)
+
     def test_protected_items_are_never_shortened_or_reworded(self):
         self.matches(r"Code, commands, paths, error messages, numbers and negations are never shortened or"
                      r"\s+reworded\.")
@@ -103,6 +140,20 @@ class LeanSkillTests(test_docs.Base):
         self.matches(r"(?s)A subagent return longer than 30 lines is blocked")
         self.matches(r"(?s)What the hooks do not cover:.{0,300}?tools whose output format is not documented")
         self.has("## lean-limits")
+
+
+class LeanUsageDocsTests(unittest.TestCase):
+    """Every reader-facing guide states the current usage: no argument turns lean on."""
+
+    def test_guides_use_the_new_lean_usage(self):
+        for path in (ROOT / "README.md", ROOT / "README.ko.md", ROOT / "docs" / "article.md",
+                     ROOT / "docs" / "article.ko.md"):
+            text = test_docs.read(path)
+            with self.subTest(file=path.name):
+                self.assertNotIn("`/devenv:lean on", text)
+                for usage in ("`/devenv:lean`", "`/devenv:lean status`", "`/devenv:lean session`",
+                              "`/devenv:lean-off`"):
+                    self.assertIn(usage, text)
 
 
 class LeanOffSkillTests(test_docs.Base):

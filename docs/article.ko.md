@@ -162,4 +162,4 @@ handoff 스킬은 돌고 있는 작업을 멈추지 않고, 검사기가 exit 0�
 }
 ```
 
-lean 모드는 `/devenv:lean on`(프로젝트 단위)이나 `/devenv:lean on session`(이 세션만)으로 켠다. 설치와 사용법의 정본은 저장소 README다.
+lean 모드는 `/devenv:lean`(프로젝트 단위)이나 `/devenv:lean session`(이 세션만)으로 켠다. `/devenv:lean status`는 상태만 알린다. 끄려면 사용자가 `/devenv:lean-off`를 직접 입력한다. 설치와 사용법의 정본은 저장소 README다.

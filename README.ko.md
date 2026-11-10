@@ -151,7 +151,7 @@ devenv의 스킬은 6개다. 각각 `/devenv:<이름>`으로 부른다.
 |---|---|---|
 | `/devenv:handoff` | 사용자 또는 모델 | 핸드오프 파일 1개를 쓰고 경로와 `Resume: ready` 여부를 보고한다. 돌고 있는 작업은 멈추지 않는다 |
 | `/devenv:resume-handoff [--c]` | 사용자 또는 모델 | 이 프로젝트의 가장 최근 핸드오프를 읽고, 적힌 작업을 확인하고, 브리핑한 뒤 기다린다(`--c`면 이어서 일한다) |
-| `/devenv:lean on` · `on session` · `status` | 사용자 또는 모델 | 이 프로젝트나 이 세션에만 lean 모드를 켜거나, 상태를 알린다 |
+| `/devenv:lean` · `session` · `status` | 사용자 또는 모델 | 인자가 없거나 `on`이면 이 프로젝트에 lean 모드를 켠다. `session`은 이 세션에만 켠다. `status`는 상태만 알리고 켜지 않는다 |
 | `/devenv:lean-off` | 사용자만, 직접 입력 | 이 프로젝트의 lean 모드를 끈다. 그 안의 「이 세션만」 항목도 지운다 |
 | `/devenv:cycle <작업>` | 사용자만 | 기본 사이클을 돌린다. 계획 1회, critic 1레인, 재검토 없는 개정, 실행, H만 고치는 적대 검증 1회다 |
 | `/devenv:doctor` | 사용자만 | 설치를 점검하고, 개발자 모드를 바꾸고(`dev on`·`dev off`·`dev status`·`dev report`), 프로젝트 규칙 파일을 만든다(`init-project`) |
@@ -279,7 +279,7 @@ Run the devenv:handoff skill with these arguments, unchanged: $ARGUMENTS
 | 2 | 사용법 오류, 파일 없음 또는 읽기 실패, 예상 못 한 오류 |
 
 ## 훅이 강제하는 것
-훅은 lean 모드가 켜진 프로젝트나 세션에서만 동작한다. `/devenv:lean on`은 이 프로젝트와 그 안의 모든 폴더에 모든 세션에서 켠다. `/devenv:lean on session`은 이 세션에만 켠다. 그 프로젝트의 위 폴더에서 연 세션은 강제하지 않는다. 예: 홈 폴더, 바깥 저장소.
+훅은 lean 모드가 켜진 프로젝트나 세션에서만 동작한다. `/devenv:lean`은 이 프로젝트와 그 안의 모든 폴더에 모든 세션에서 켠다. `/devenv:lean session`은 이 세션에만 켠다. `/devenv:lean status`는 상태만 알리고 켜지 않는다. 그 프로젝트의 위 폴더에서 연 세션은 강제하지 않는다. 예: 홈 폴더, 바깥 저장소.
 
 | 훅 | 이벤트 | lean 모드가 켜져 있을 때 |
 |---|---|---|

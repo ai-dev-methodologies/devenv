@@ -20,7 +20,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-VERSION = "2026.11.10-3"
+VERSION = "2026.11.10-4"
 MAX_BYTES = 5 * 1024 * 1024
 SESSION_ID = re.compile(r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")  # UUID only
 CALLERS = ("handoff_state.py",)

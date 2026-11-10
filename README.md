@@ -145,7 +145,7 @@ devenv has six skills. Each is called as `/devenv:<name>`.
 |---|---|---|
 | `/devenv:handoff` | The user or the model | Writes one handoff file and reports its path and whether it is `Resume: ready`. It never stops running work |
 | `/devenv:resume-handoff [--c]` | The user or the model | Reads this project's most recent handoff file, checks the work it lists, briefs, and waits (continues with `--c`) |
-| `/devenv:lean on` · `on session` · `status` | The user or the model | Turns lean mode on for this project or for this session only, or reports its state |
+| `/devenv:lean` · `session` · `status` | The user or the model | With no argument (or `on`), turns lean mode on for this project. `session` turns it on for this session only. `status` reports its state and turns nothing on |
 | `/devenv:lean-off` | The user only, by typing it | Turns lean mode off for this project, including a this-session-only entry inside it |
 | `/devenv:cycle <task>` | The user only | Runs the default cycle: one planner run, one critic lane, a revision without re-review, execution, one adversarial verify pass that fixes H findings only |
 | `/devenv:doctor` | The user only | Checks the install, switches developer mode (`dev on`, `dev off`, `dev status`, `dev report`), or creates the project rules file (`init-project`) |
@@ -273,7 +273,7 @@ These are the exit codes of `check_handoff.py`.
 | 2 | Usage error, file missing or unreadable, or an unexpected error |
 
 ## What the Hooks Enforce
-The hooks act only in a project or session where lean mode is on. Turn it on with `/devenv:lean on` (this project and every folder inside it, in every session) or `/devenv:lean on session` (this session only). A session opened in a folder above that project, such as a home folder or an outer repository, is not enforced.
+The hooks act only in a project or session where lean mode is on. Turn it on with `/devenv:lean` (this project and every folder inside it, in every session) or `/devenv:lean session` (this session only). `/devenv:lean status` reports the state without turning it on. A session opened in a folder above that project, such as a home folder or an outer repository, is not enforced.
 
 | Hook | Event | While lean mode is on |
 |---|---|---|

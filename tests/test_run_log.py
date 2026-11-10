@@ -370,7 +370,7 @@ class SignalFieldsTest(RunLogTestCase):
 
     def test_R4_version_format(self):
         self.assertRegex(run_log.VERSION, r"^\d{4}\.\d{2}\.\d{2}-\d+$")
-        self.assertEqual(run_log.VERSION, "2026.11.10-3")
+        self.assertEqual(run_log.VERSION, "2026.11.10-4")
 
 
 class IntegerFieldsTest(RunLogTestCase):

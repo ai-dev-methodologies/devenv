@@ -1188,7 +1188,7 @@ class RunReportDocTests(unittest.TestCase):
         change = read(CHANGELOG).split("## [2026.11.09-3]", 1)
         self.assertEqual(2, len(change), "CHANGELOG lacks 2026.11.09-3")
         self.assertIn("after-handoff", change[1].split("\n## [", 1)[0])
-        self.assertTrue(read(CHANGELOG).split("## [", 1)[1].startswith("2026.11.10-3]"))
+        self.assertTrue(read(CHANGELOG).split("## [", 1)[1].startswith("2026.11.10-4]"))
 
     def test_BH52_readmes_changelog(self):
         for name, text in (("README.md", self.en), ("README.ko.md", self.ko)):

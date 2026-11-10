@@ -156,4 +156,4 @@ The engine repository is also its own marketplace (`https://github.com/ai-dev-me
 }
 ```
 
-Turn lean mode on with `/devenv:lean on` for the project or `/devenv:lean on session` for this session only. The repository README is the canonical guide to installation and use.
+Turn lean mode on with `/devenv:lean` for the project or `/devenv:lean session` for this session only. `/devenv:lean status` reports the state, and the user turns it off by typing `/devenv:lean-off`. The repository README is the canonical guide to installation and use.

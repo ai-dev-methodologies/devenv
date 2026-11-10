@@ -4,6 +4,12 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are dates (`YYYY.MM.DD-N`), the
 same value that every run writes to the run log as `version`.
 
+## [2026.11.10-4] - 2026-11-10
+
+### Changed
+- `/devenv:lean` with no argument now turns lean mode on for this project, the same as `on`. `session` turns it
+  on for this session only, `status` only reports, and `off` still answers with a pointer to `/devenv:lean-off`.
+
 ## [2026.11.10-3] - 2026-11-10
 
 ### Fixed
