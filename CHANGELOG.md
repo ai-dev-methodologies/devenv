@@ -9,6 +9,7 @@ same value that every run writes to the run log as `version`.
 ### Changed
 - `/devenv:lean` with no argument now turns lean mode on for this project, the same as `on`. `session` turns it
   on for this session only, `status` only reports, and `off` still answers with a pointer to `/devenv:lean-off`.
+- Both READMEs and the articles show `/devenv:lean` and `/devenv:lean session`; `on session` is still accepted.
 
 ## [2026.11.10-3] - 2026-11-10
 
@@ -49,6 +50,7 @@ describe the earlier standalone handoff commands.
   next to it first.
 - Release test: the top CHANGELOG version, `plugin.json` version and `run_log.VERSION` must be equal.
 - `LICENSE` (MIT) and a README in English and Korean.
+- An article on the design in English and Korean (`docs/article.md`, `docs/article.ko.md`).
 
 ### Changed
 - The run log default path is written only while developer mode is on. `HANDOFF_LOG` still wins.

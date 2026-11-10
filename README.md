@@ -2,7 +2,16 @@
 
 English | [한국어](README.ko.md)
 
-This README owns the human-facing order of steps for devenv: what it is, how to install it, how to use it, and how to check it. It owns seven facts:
+devenv is a Claude Code plugin that passes what one session knew to the next session and keeps the main session's context small with lean mode. This README owns the human-facing order of steps for devenv.
+
+```sh
+claude plugin marketplace add ai-dev-methodologies/devenv
+claude plugin install devenv@devenv --scope user --config python=/path/to/python3
+```
+
+Replace `/path/to/python3` with the absolute path of a Python 3.10 or later interpreter. Then start a new session and run `/devenv:doctor`. The last line must show `fail=0`. Requirements and the other commands are in [Install](#install).
+
+The README covers what devenv is, how to install it, how to use it, and how to check it. It owns seven facts:
 
 - what devenv is, and its overall structure
 - how to install, update, and remove it
@@ -13,6 +22,10 @@ This README owns the human-facing order of steps for devenv: what it is, how to 
 - how to move from the older standalone handoff install
 
 The format of the handoff file and the step-by-step procedures are owned by `skills/handoff/SKILL.md` and `skills/resume-handoff/SKILL.md`.
+
+Contents: [What devenv Is](#what-devenv-is) · [Install](#install) · [Skills](#skills) · [What the Hooks Enforce](#what-the-hooks-enforce) · [Turning Lean Mode Off](#turning-lean-mode-off) · [Rule Layers](#rule-layers) · [Developer Mode and the Run Log](#developer-mode-and-the-run-log) · [Reading the Doctor Output](#reading-the-doctor-output) · [Moving from the Older Standalone Install](#moving-from-the-older-standalone-install) · [Limits](#limits) · [License](#license)
+
+Release notes are in [CHANGELOG.md](CHANGELOG.md). The article [docs/article.md](docs/article.md) explains why devenv works this way.
 
 ## What devenv Is
 devenv is a Claude Code plugin with six skills and five hook registrations. It passes what one session knew to the next session (`handoff` and `resume-handoff`), keeps the main session's context small with lean mode, which hooks enforce, runs a default plan-review-execute-verify cycle, and checks its own install (`doctor`). Every hook, and every script a skill calls, runs with the Python interpreter you name at install time.
@@ -110,16 +123,16 @@ Solid lines are the main flow of install, run, write, and resume. Dotted lines a
 The hash of the status file is made from the top-level folder path. The hash of the history file is made from the `project key:` value, so linked worktrees share one history file. `<plugin data>` is the folder Claude Code gives the plugin as `${CLAUDE_PLUGIN_DATA}`.
 
 ## Install
-Python 3.10 or later is required. Skills run scripts through `bin/devenv-py`, a POSIX shell script, so macOS and Linux are supported and Windows is not.
+Python 3.10 or later is required. Skills run scripts through `bin/devenv-py`, a POSIX shell script, so macOS and Linux are supported and Windows is not. The commands in this section were checked with Claude Code 2.1.321.
 
-1. Add the marketplace: `claude plugin marketplace add https://github.com/ai-dev-methodologies/devenv`. The source may be a URL, a local path, or a GitHub `owner/repo`. The marketplace is named `devenv`.
-2. Install the plugin with the interpreter: `claude plugin install devenv@devenv --config python=/absolute/path/to/python3`.
+1. Add the marketplace: `claude plugin marketplace add ai-dev-methodologies/devenv`. The source may also be the URL `https://github.com/ai-dev-methodologies/devenv` or a local path. The marketplace is named `devenv`.
+2. Install the plugin with the interpreter: `claude plugin install devenv@devenv --scope user --config python=/path/to/python3`.
 3. Start a new session and run `/devenv:doctor`. The last line must show `fail=0`.
 
 To set or change the interpreter later, `claude plugin configure devenv@devenv` shows the options and which are unset. To save a value, pass it on stdin:
 
 ```
-echo '{"python": "/absolute/path/to/python3"}' | claude plugin configure devenv@devenv --values-stdin
+echo '{"python": "/path/to/python3"}' | claude plugin configure devenv@devenv --values-stdin
 ```
 
 Give a stable absolute path. An interpreter inside a virtual environment stops working when that environment is deleted or recreated, and then every hook ends in a non-blocking error. The doctor line `python-version` checks that the interpreter is 3.10 or later.
@@ -128,9 +141,16 @@ Skills call scripts as `devenv-py ${CLAUDE_PLUGIN_ROOT}/scripts/<script> … --p
 
 devenv writes no run log line (`runs.jsonl`) while developer mode is off. To keep the run log going after moving from the older install, turn developer mode on after installing (`/devenv:doctor dev on`).
 
+### After Installing
+1. Run `/devenv:doctor` in a new session. Each line reads `DOCTOR <id> PASS|WARN|FAIL|SKIP <evidence>`, and the last line must show `fail=0`. What each line proves is in [Reading the Doctor Output](#reading-the-doctor-output).
+2. Turn lean mode on where you want the hooks to act. `/devenv:lean` turns it on for this project, and `/devenv:lean session` for this session only. `/devenv:lean status` reports the state and turns nothing on. To turn it off, type `/devenv:lean-off`.
+3. Run `/devenv:handoff` before you hand the session over or before the context fills. In the next session, run `/devenv:resume-handoff`. Add `--c` to keep working right after the briefing.
+4. To use the short names `/handoff`, `/resume-handoff`, and `/lean`, add the link commands described in [Handoff and Resume](#handoff-and-resume).
+
 ### Update and Remove
 | Command | What it does |
 |---|---|
+| `claude plugin marketplace update devenv` | Fetches the marketplace again from its source. Run it before `claude plugin update` |
 | `claude plugin update devenv@devenv` | Updates the plugin. A restart is required to apply it |
 | `claude plugin disable devenv@devenv` | Disables the plugin and keeps it installed |
 | `claude plugin uninstall devenv@devenv --keep-data` | Uninstalls the plugin and keeps its data folder |
@@ -170,7 +190,7 @@ description: Write a session handoff with devenv
 Run the devenv:handoff skill with these arguments, unchanged: $ARGUMENTS
 ```
 
-A `~/.claude/commands/resume-handoff.md` written the same way gives `/resume-handoff`. The continue decision still comes only from the arguments.
+A `~/.claude/commands/resume-handoff.md` written the same way gives `/resume-handoff`, and a `~/.claude/commands/lean.md` gives `/lean`. The continue decision still comes only from the arguments. Plugin commands always carry the `devenv:` prefix, so a short name exists only as a user command file like these. `/devenv:lean-off` cannot be called through a link command, because the model cannot invoke that skill. Type `/devenv:lean-off` to turn lean mode off.
 
 ### One Round Trip
 `/devenv:handoff` (session A)
@@ -485,6 +505,7 @@ Do not keep using the older lean skill or the older scripts alongside the plugin
 3. If step 5 was done, restore the files from the backup folder to the same paths under `~/.claude/`.
 
 ## Limits
+- devenv installs no rules files, `CLAUDE.md`, settings, or agent definitions. It ships skills, hooks, and scripts only. Your own working rules stay in your files (see "Rule Layers").
 - Large output of tools whose output format is not documented (an agent listing, for example) is not stopped.
 - A shell command that changes the lean state file directly is not refused: a redirection, `rm`, `mv`, `chmod`, or a run through one more shell or interpreter that builds the command at run time.
 - A Bash command that names the state tool together with the words `lean` and `off` is refused while lean mode is on, even when it would change nothing (a `grep` of the state tool, for example).
@@ -500,4 +521,4 @@ Do not keep using the older lean skill or the older scripts alongside the plugin
 - The release test checks that the top `CHANGELOG.md` version, the `plugin.json` version, and `run_log.VERSION` are equal. It does not catch a release whose content changed while its version did not.
 
 ## License
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

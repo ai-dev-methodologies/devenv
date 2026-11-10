@@ -728,8 +728,8 @@ class ResumeDocTests(Base):
 # Override point identifiers every README names: the handoff four, then the engine's own two.
 README_POINTS = ("runner-completion", "state-files", "forbidden-writes", "values", "lean-limits", "doctor-settings")
 # Install commands checked against `claude plugin --help` and its subcommands' help.
-INSTALL_COMMANDS = ("claude plugin marketplace add https://github.com/ai-dev-methodologies/devenv",
-                    "claude plugin install devenv@devenv --config python=",
+INSTALL_COMMANDS = ("claude plugin marketplace add ai-dev-methodologies/devenv",
+                    "claude plugin install devenv@devenv --scope user --config python=",
                     "claude plugin configure devenv@devenv")
 ROLLBACK_COMMANDS = ("claude plugin disable devenv@devenv", "claude plugin uninstall devenv@devenv --keep-data",
                      "claude plugin marketplace remove devenv")

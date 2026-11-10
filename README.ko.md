@@ -2,7 +2,16 @@
 
 [English](README.md) | 한국어
 
-이 README는 devenv를 쓰는 사람이 따라갈 순서를 소유한다. 무엇인지, 어떻게 설치하고 쓰고 점검하는지를 다룬다. 이 문서가 소유하는 사실은 다음 7가지다.
+devenv는 Claude Code 플러그인이다. 한 세션이 알던 것을 다음 세션에 넘기고, lean 모드로 메인 세션의 컨텍스트를 작게 유지한다. 이 README는 devenv를 쓰는 사람이 따라갈 순서를 소유한다.
+
+```sh
+claude plugin marketplace add ai-dev-methodologies/devenv
+claude plugin install devenv@devenv --scope user --config python=/path/to/python3
+```
+
+`/path/to/python3`에는 Python 3.10 이상 인터프리터의 절대 경로를 넣는다. 설치한 뒤 새 세션에서 `/devenv:doctor`를 실행한다. 마지막 줄이 `fail=0`이어야 한다. 요구 사항과 다른 명령은 [설치](#설치)에 있다.
+
+이 README는 무엇인지, 어떻게 설치하고 쓰고 점검하는지를 다룬다. 이 문서가 소유하는 사실은 다음 7가지다.
 
 - devenv가 무엇인지와 전체 구조
 - 설치·갱신·제거 방법
@@ -13,6 +22,10 @@
 - 옛 단독 handoff 설치본에서 옮기는 방법
 
 핸드오프 파일의 양식과 단계별 절차는 `skills/handoff/SKILL.md`와 `skills/resume-handoff/SKILL.md`가 소유한다.
+
+목차: [devenv란](#devenv란) · [설치](#설치) · [스킬](#스킬) · [훅이 강제하는 것](#훅이-강제하는-것) · [lean 모드 끄기](#lean-모드-끄기) · [규칙 층](#규칙-층) · [개발자 모드와 실행 기록](#개발자-모드와-실행-기록) · [doctor 출력 읽는 법](#doctor-출력-읽는-법) · [옛 단독 설치본에서 옮기기](#옛-단독-설치본에서-옮기기) · [한계](#한계) · [라이선스](#라이선스)
+
+변경 기록은 [CHANGELOG.md](CHANGELOG.md)에 있다. devenv가 왜 이렇게 동작하는지는 [docs/article.ko.md](docs/article.ko.md)가 설명한다.
 
 ## devenv란
 devenv는 스킬 6개와 훅 등록 5개를 담은 Claude Code 플러그인이다. 하는 일은 다음 3가지다.
@@ -116,16 +129,16 @@ flowchart TD
 상태 목록 파일의 해시는 최상위 폴더 경로에서 만든다. 이력 파일의 해시는 `project key:` 값에서 만들므로 연결 작업 트리끼리 같은 이력 파일을 쓴다. `<플러그인 데이터>`는 Claude Code가 플러그인에 `${CLAUDE_PLUGIN_DATA}`로 주는 폴더다.
 
 ## 설치
-Python 3.10 이상이 필요하다. 스킬은 POSIX 셸 스크립트인 `bin/devenv-py`로 스크립트를 부른다. 그래서 macOS와 Linux만 지원하고 Windows는 지원하지 않는다.
+Python 3.10 이상이 필요하다. 스킬은 POSIX 셸 스크립트인 `bin/devenv-py`로 스크립트를 부른다. 그래서 macOS와 Linux만 지원하고 Windows는 지원하지 않는다. 이 절의 명령은 Claude Code 2.1.321에서 확인했다.
 
-1. 마켓플레이스를 더한다: `claude plugin marketplace add https://github.com/ai-dev-methodologies/devenv`. 출처는 URL, 로컬 경로, GitHub `owner/repo` 중 하나다. 마켓플레이스 이름은 `devenv`다.
-2. 인터프리터를 지정해 플러그인을 설치한다: `claude plugin install devenv@devenv --config python=/absolute/path/to/python3`.
+1. 마켓플레이스를 더한다: `claude plugin marketplace add ai-dev-methodologies/devenv`. 출처로 URL `https://github.com/ai-dev-methodologies/devenv`나 로컬 경로를 줘도 된다. 마켓플레이스 이름은 `devenv`다.
+2. 인터프리터를 지정해 플러그인을 설치한다: `claude plugin install devenv@devenv --scope user --config python=/path/to/python3`.
 3. 새 세션을 열고 `/devenv:doctor`를 실행한다. 마지막 줄이 `fail=0`이어야 한다.
 
 인터프리터를 나중에 정하거나 바꿀 때는 `claude plugin configure devenv@devenv`로 항목과 비어 있는 값을 본다. 값은 표준 입력으로 저장한다.
 
 ```
-echo '{"python": "/absolute/path/to/python3"}' | claude plugin configure devenv@devenv --values-stdin
+echo '{"python": "/path/to/python3"}' | claude plugin configure devenv@devenv --values-stdin
 ```
 
 인터프리터는 바뀌지 않을 절대 경로로 준다. 가상환경 안의 인터프리터는 그 환경을 지우거나 다시 만들면 동작하지 않는다. 그러면 모든 훅이 비차단 오류로 끝난다. doctor의 `python-version` 줄이 인터프리터가 3.10 이상인지 확인한다.
@@ -134,9 +147,16 @@ echo '{"python": "/absolute/path/to/python3"}' | claude plugin configure devenv@
 
 개발자 모드를 켜지 않으면 실행 기록(`runs.jsonl`)을 쓰지 않는다. 옛 설치본에서 옮겨 와 기록을 이어 가려면 설치 뒤 개발자 모드를 켠다. 예: `/devenv:doctor dev on`.
 
+### 설치한 뒤 할 일
+1. 새 세션에서 `/devenv:doctor`를 실행한다. 각 줄은 `DOCTOR <id> PASS|WARN|FAIL|SKIP <근거>` 형식이다. 마지막 줄이 `fail=0`이어야 한다. 줄마다 무엇을 증명하는지는 [doctor 출력 읽는 법](#doctor-출력-읽는-법)에 있다.
+2. 훅을 적용할 곳에서 lean 모드를 켠다. `/devenv:lean`은 이 프로젝트에 켠다. `/devenv:lean session`은 이 세션에만 켠다. `/devenv:lean status`는 상태만 알리고 켜지 않는다. 끌 때는 `/devenv:lean-off`를 직접 입력한다.
+3. 세션을 넘기기 전이나 컨텍스트가 차기 전에 `/devenv:handoff`를 실행한다. 다음 세션에서 `/devenv:resume-handoff`를 실행한다. 브리핑 뒤 바로 이어서 일하려면 `--c`를 붙인다.
+4. 짧은 이름(`/handoff`·`/resume-handoff`·`/lean`)을 쓰려면 연결 명령을 만든다. 예시는 [핸드오프와 재개](#핸드오프와-재개)에 있다.
+
 ### 갱신과 제거
 | 명령 | 하는 일 |
 |---|---|
+| `claude plugin marketplace update devenv` | 마켓플레이스를 출처에서 다시 받는다. `claude plugin update`보다 먼저 실행한다 |
 | `claude plugin update devenv@devenv` | 플러그인을 갱신한다. 적용하려면 다시 시작해야 한다 |
 | `claude plugin disable devenv@devenv` | 설치는 둔 채 플러그인을 끈다 |
 | `claude plugin uninstall devenv@devenv --keep-data` | 데이터 폴더는 남기고 플러그인을 제거한다 |
@@ -176,7 +196,7 @@ description: Write a session handoff with devenv
 Run the devenv:handoff skill with these arguments, unchanged: $ARGUMENTS
 ```
 
-같은 방식으로 쓴 `~/.claude/commands/resume-handoff.md`가 `/resume-handoff`를 만든다. 계속 여부는 여전히 인자로만 정한다.
+같은 방식으로 쓴 `~/.claude/commands/resume-handoff.md`가 `/resume-handoff`를 만든다. `~/.claude/commands/lean.md`는 `/lean`을 만든다. 계속 여부는 여전히 인자로만 정한다. 플러그인 명령에는 늘 `devenv:`가 붙는다. 그래서 짧은 이름은 이런 사용자 명령 파일로만 생긴다. `/devenv:lean-off`는 연결 명령으로 대신 부를 수 없다. 모델이 그 스킬을 부르지 못하기 때문이다. lean 모드는 `/devenv:lean-off`를 직접 입력해 끈다.
 
 ### 한 바퀴 흐름
 `/devenv:handoff`(세션 A)
@@ -491,6 +511,7 @@ DOCTOR summary pass=17 warn=0 fail=0 skip=8
 3. 5단계를 했으면 백업 폴더의 파일을 `~/.claude/` 아래 같은 경로로 복원한다.
 
 ## 한계
+- devenv는 규칙 파일·`CLAUDE.md`·settings·에이전트 정의를 설치하지 않는다. 스킬·훅·스크립트만 담는다. 사용자의 작업 규칙은 사용자 파일에 둔다(「규칙 층」 참고).
 - 출력 형식이 문서에 없는 도구(예: 에이전트 목록)의 큰 출력은 막지 못한다.
 - 셸 명령으로 lean 상태 파일을 직접 바꾸는 것은 거부하지 않는다. 리다이렉션·`rm`·`mv`·`chmod`가 그 예다. 셸이나 다른 인터프리터를 한 번 더 거쳐 실행 중에 명령을 만드는 것도 같다.
 - lean 모드가 켜져 있으면 상태 도구 이름과 `lean`·`off` 낱말이 함께 든 Bash 명령은 상태를 바꾸지 않아도 거부한다. 예: 상태 도구를 `grep`으로 읽는 명령.
@@ -506,4 +527,4 @@ DOCTOR summary pass=17 warn=0 fail=0 skip=8
 - 릴리스 시험은 `CHANGELOG.md` 맨 위 버전, `plugin.json` 버전, `run_log.VERSION`이 같은지 확인한다. 내용이 바뀌었는데 버전이 그대로인 릴리스는 잡지 못한다.
 
 ## 라이선스
-MIT다. `LICENSE`를 본다.
+MIT다. [LICENSE](LICENSE)를 본다.
