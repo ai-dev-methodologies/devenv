@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""context_budget.py 단위 검사. 임시 HOME·cwd로 경계·부재·기록·형식·슬러그 6건을 확인한다. 인자는 받지 않는다."""
+"""Unit check of context_budget.py: six cases (cap edges, missing file, record, format, slug) on a temporary HOME
+and cwd. Takes no arguments."""
 import os
 import re
 import subprocess
@@ -61,10 +62,10 @@ def case_missing():
     with tempfile.TemporaryDirectory() as t:
         home, cwd, env = make_env(Path(t), 10, with_local=False)
         rc, out, _ = run(["--cwd", str(cwd), "--table"], env)
-        missing_rows = [ln for ln in out.splitlines() if ln.startswith("없음\t")]
+        missing_rows = [ln for ln in out.splitlines() if ln.startswith("missing\t")]
         local_missing = any(ln.endswith("CLAUDE.local.md") for ln in missing_rows)
-        ok = rc == 0 and local_missing and "10\t합계" in out
-        return ok, f"rc={rc} 없음행={len(missing_rows)}"
+        ok = rc == 0 and local_missing and "10\ttotal" in out
+        return ok, f"rc={rc} missing_rows={len(missing_rows)}"
 
 
 def case_record_over():
@@ -75,7 +76,7 @@ def case_record_over():
         run(["--cwd", str(cwd), "--record"], env)
         lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
         ok = rc == 2 and len(lines) == 2 and all(LINE_RE.match(ln) for ln in lines)
-        return ok, f"rc={rc} 로그줄={len(lines)}"
+        return ok, f"rc={rc} log_lines={len(lines)}"
 
 
 def case_format():
@@ -98,37 +99,37 @@ def case_slug_dot_underscore():
         rc, out, _ = run(["--cwd", str(dotted), "--table"], env)
         rows = [ln for ln in out.splitlines() if ln.endswith("MEMORY.md")]
         ok = rc == 0 and len(rows) == 1 and rows[0].startswith("7\t")
-        return ok, f"rc={rc} 색인행={rows}"
+        return ok, f"rc={rc} memory_rows={rows}"
 
 
 CASES = [
-    ("경계 49152 -> 종료코드 0", case_cap_ok),
-    ("경계 49153 -> 종료코드 2", case_cap_over),
-    ("대상 부재 -> 없음 행·합 제외", case_missing),
-    ("--record 종료코드 2에서도 기록", case_record_over),
-    ("표 1줄 형식 정규식", case_format),
-    (". _ 든 cwd -> 메모리 색인 바이트", case_slug_dot_underscore),
+    ("cap edge 49152 -> exit 0", case_cap_ok),
+    ("cap edge 49153 -> exit 2", case_cap_over),
+    ("missing file -> missing row, left out of the total", case_missing),
+    ("--record writes even on exit 2", case_record_over),
+    ("one-line format regex", case_format),
+    ("cwd with . and _ -> memory index bytes", case_slug_dot_underscore),
 ]
 
 
 def main():
     if len(sys.argv) > 1:
-        print("[거부] 인자를 받지 않는다")
+        print("[REFUSED] takes no arguments")
         return 2
     if not TOOL.exists():
-        print(f"[FAIL] context_budget.py 부재: {TOOL}")
-        print(f"요약: {len(CASES)}건 중 0 PASS / {len(CASES)} FAIL")
+        print(f"[FAIL] context_budget.py missing: {TOOL}")
+        print(f"summary: {len(CASES)} cases, 0 PASS / {len(CASES)} FAIL")
         return 1
     passed = 0
     for name, fn in CASES:
         try:
             ok, detail = fn()
         except Exception as e:  # noqa: BLE001
-            ok, detail = False, f"예외 {e!r}"
+            ok, detail = False, f"exception {e!r}"
         print(f"[{'PASS' if ok else 'FAIL'}] {name} :: {detail}")
         passed += 1 if ok else 0
     failed = len(CASES) - passed
-    print(f"요약: {len(CASES)}건 중 {passed} PASS / {failed} FAIL")
+    print(f"summary: {len(CASES)} cases, {passed} PASS / {failed} FAIL")
     return 1 if failed else 0
 
 

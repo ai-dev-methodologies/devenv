@@ -88,7 +88,7 @@ It is the basis table for judging whether the number of current-format fields wi
 | 40 | Live items come from the conversation, not from a script. Item kinds are subagent · job · monitor · runner | handoff.md:83-84 | core write · Step 1 · Step 2 | keep | Taking items from the conversation stays as is. The kinds are split into `Live subagents` · `Live runners` · `Live scheduled` (monitor · cron · wakeup), so every kind has a place to be recorded |
 | 41 | Do not make up values. Do not collect port · Docker · migration · CI results | handoff.md:88-90 | core write · Step 2 | keep | No decision |
 | 42 | Three Live field names allowed (`Live background work` · `Live subagents` · `Live runners`) | check_handoff.py:40, 52-54 | core checker | split | The new format always requires the three lines `Live subagents` · `Live runners` · `Live scheduled` and does not accept `Live background work` |
-| 43 | Live field value rule: an empty value fails, and a value other than `none` · `없음` must be a result path containing `/` | check_handoff.py:41, 55-60 | core checker | split | The value is `none` or a list of items. Each item needs 6 keys (`Live scheduled` has `fires-at` instead of `result`) and a `(<id>)` in `name`, `result` is an absolute path, and it fails if it is under `.claude/jobs/` |
+| 43 | Live field value rule: an empty value fails, and a value other than `none` (or its Korean word) must be a result path containing `/` | check_handoff.py:41, 55-60 | core checker | split | The value is `none` or a list of items. Each item needs 6 keys (`Live scheduled` has `fires-at` instead of `result`) and a `(<id>)` in `name`, `result` is an absolute path, and it fails if it is under `.claude/jobs/` |
 | 44 | The 4 required Session State fields (Branch · Uncommitted changes · Unpushed commits · Lockfile changed) | check_handoff.py:39, 49-51 | core checker | keep | The 4 stay as they are, and 3 Live fields are added (row 42). If the checker gets `--git yes`, it also fails when the Session State section is missing |
 
 ## D. Body Sections and Item Formats
@@ -130,10 +130,10 @@ It is the basis table for judging whether the number of current-format fields wi
 
 | # | Current field | Current location (file:line) | New location | Handling | Reason |
 |---|---|---|---|---|---|
-| 75 | Three-cell label pairs (`what:`/무엇을 · `why:`/왜 · `how:`/어떻게, case-insensitive) | check_handoff.py:31, 85-89 | core checker | keep | No decision |
+| 75 | Three-cell label pairs (`what:` · `why:` · `how:`, each with its Korean label, case-insensitive) | check_handoff.py:31, 85-89 | core checker | keep | No decision |
 | 76 | List of sections that get the three-cell check (What Has NOT Been Tried Yet · Decisions Made) | check_handoff.py:30 | core checker | split | `What Has NOT Been Tried Yet` still gets the label pair check. Decisions Made is table rows, not bullets, so it is not subject to the label pair check, and each row is checked separately for having all three cells and for not being a placeholder |
 | 77 | A design document path pattern (`…-design.md` · `…-plan.md` · `plans/…`) stands in for the three cells | check_handoff.py:32, 87-88 | core checker | keep | Project-specific plan folder patterns are taken by the project layer point "extra state files to read" |
-| 78 | Items under 40 characters and items starting with `- none` · `- 없음` · `- no ` are treated as status lines and skipped | check_handoff.py:33, 139-140 | core checker | keep | No decision |
+| 78 | Items under 40 characters and items starting with `- none` (or its Korean word) · `- no ` are treated as status lines and skipped | check_handoff.py:33, 139-140 | core checker | keep | No decision |
 | 79 | Item splitting rule (starts with a bullet or number, an indented line continues the item) | check_handoff.py:67-82 | core checker | keep | No decision |
 | 80 | Exact Next Step must exist and be non-empty | check_handoff.py:61-63 | core checker | keep | Besides being empty, a section holding only placeholders (including a multi-line bracket block) also fails |
 | 81 | Exit codes 0 (pass) · 1 (item · marker · resume contract failure) · 2 (file missing) | check_handoff.py:23-24, 123-128, 157-160 | core checker | split | A marker failure is removed (row 8). 0 and 1 stay as they are, and 2 is used for an unexpected exception as well as a missing file |

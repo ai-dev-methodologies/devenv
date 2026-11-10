@@ -142,13 +142,13 @@ class HandoffDocTests(Base):
     def test_G4_jobs_results_copied_to_durable_location(self):
         hits = [
             p for p in paragraphs(self.text)
-            if ".claude/jobs/" in p and re.search(r"copy|복사", p, re.I)
+            if ".claude/jobs/" in p and re.search(r"copy", p, re.I)
         ]
-        self.assertTrue(hits, "no paragraph mentions .claude/jobs/ together with copy/복사")
+        self.assertTrue(hits, "no paragraph mentions .claude/jobs/ together with copy")
 
     def test_M11_no_mkdir_write_creates_parent(self):
         self.lacks("mkdir")
-        lines = [l for l in self.text.splitlines() if "Write" in l and re.search(r"parent|부모", l)]
+        lines = [l for l in self.text.splitlines() if "Write" in l and re.search(r"parent", l)]
         self.assertTrue(lines, "no line says Write creates the parent folder")
 
     def test_rules_layer_both_files_mentioned(self):
@@ -160,8 +160,7 @@ class HandoffDocTests(Base):
 
     def test_rules_layer_apply_order(self):
         en = re.search(r"core.{0,80}user.{0,80}project", self.text, re.I | re.S)
-        ko = re.search(r"핵심.{0,80}사용자.{0,80}프로젝트", self.text, re.S)
-        self.assertTrue(en or ko, "no core -> user -> project order statement")
+        self.assertTrue(en, "no core -> user -> project order statement")
 
     def test_H5_toplevel_header_right_after_project(self):
         self.matches(r"\*\*Project:\*\*[^\n]*\n\*\*Toplevel:\*\*")
@@ -426,8 +425,8 @@ class HandoffDocTests(Base):
         self.assertLess(fmt.index("**Continues:**"), fmt.index("**Session:**"))
         self.assertLess(fmt.index("**Session:**"), fmt.index("**Topic:**"))
         self.has("## After Handoff", fmt)
-        self.has("→ 결정:", fmt)
-        self.has("결정: 변경 없음", self.text)
+        self.has("→ decision:", fmt)
+        self.has("decision: unchanged", self.text)
         self.assertGreater(fmt.index("## After Handoff"), fmt.index("## Environment & Setup Notes"))
         step0 = self._step(0)
         self.has("`session id:`", step0)
@@ -455,14 +454,14 @@ class HandoffDocTests(Base):
         self.assertLess(fmt.index("## Reviews"), fmt.index("## User Assumptions"))
         self.assertLess(fmt.index("## Environment & Setup Notes"), fmt.index("## Before Handoff"))
         self.assertLess(fmt.index("## Before Handoff"), fmt.index("## After Handoff"))
-        for needle in ("→ 반영:", "→ 무관", "running"):
+        for needle in ("→ reflected:", "→ unrelated", "running"):
             self.has(needle, fmt)
         self.matches(r"- \[[^\]\n]+\] · \[[^\]\n]+\] · \[[^\]\n]*running[^\]\n]*\] · \[[^\]\n]+\]", fmt)
-        for needle in ("🔴", "(독립)", "(← "):
+        for needle in ("🔴", "(independent)", "(← "):
             self.has(needle, fmt)
         step5 = self._step(5)
         for needle in ("## Before Handoff", "## Reviews", "the lines the checker shows", "subagents/agent-<id>.jsonl",
-                       "subagents/workflows/<runId>/", "`반영: <section title>`", "24 KiB"):
+                       "subagents/workflows/<runId>/", "`reflected: <section title>`", "24 KiB"):
             self.has(needle, step5)
         step6 = self._step(6)
         for needle in ("before-handoff", "reviews", "contract-next-step-deps", "24 KiB", "(missing: ",
@@ -690,7 +689,7 @@ class ResumeDocTests(Base):
         step0 = self.text.split("### Step 0", 1)[1].split("#### What Steps 0–3 do", 1)[0]
         self.has("before handoff: N user message(s)", step0)
         self.has("WARNING: N user message(s) before the last /handoff are not in the handoff file", step0)
-        self.matches(r"(?is)`무관`[^.]{0,120}(instruction|decision)[^.]{0,120}briefing")
+        self.matches(r"(?is)`→ unrelated`[^.]{0,120}(instruction|decision)[^.]{0,120}briefing")
         self.matches(r"(?is)`REVIEWS:`[^.]{0,200}rejected[^.]{0,120}not propose[^.]{0,120}transcript")
         warnings = self.text.split("## Warnings to include in the briefing", 1)[1].split("\n## ", 1)[0]
         self.has("before the last /handoff are not in the handoff file", warnings)
@@ -712,7 +711,7 @@ class ResumeDocTests(Base):
         step5 = self.text.split("### Step 5", 1)[1].split("## Warnings", 1)[0]
         self.matches(r"(?is)unrecorded messages after handoff.{0,400}`claude --resume <the \*\*Session:\*\* id>`"
                      r".{0,200}append only.{0,200}checker", step5)
-        self.matches(r"(?is)계속」 here, the unrecorded lines are the latest\s+decisions.{0,120}before Exact Next Step"
+        self.matches(r"(?is)says to continue here, the unrecorded lines are the latest\s+decisions.{0,120}before Exact Next Step"
                      r".{0,120}it wins", step5)
         self.matches(r"(?is)Whenever the `AFTER HANDOFF:` block ends with `… and N more`, do not continue, whatever the"
                      r"\s+`continue:` reason", step5)
@@ -926,7 +925,7 @@ class ReadmeTests(Base):
     def test_language_switch_line_right_under_the_title(self):
         lines = self.text.splitlines()
         self.assertEqual("# devenv", lines[0])
-        self.assertEqual("English | [한국어](README.ko.md)", lines[2])
+        self.assertEqual("English | [Korean](README.ko.md)", lines[2])
 
     def test_A11_what_to_write_emphasized(self):
         self.assertTrue(self._emphasized("What Each Rules File Holds"))
@@ -986,9 +985,10 @@ class ReadmeTests(Base):
         self.lacks("python3 ~/.claude/scripts/")
 
     def test_continue_word_is_kept_and_explained_once(self):
-        self.has("`계속`")
-        self.matches(r"“continue” in Korean")
-        self.assertEqual(1, self.text.count("“continue” in Korean"))
+        self.has("--continue")
+        self.assertEqual(1, self.text.count("Korean continue word"))
+        self.assertNotIn("legacy Korean continue word", self.text)  # the word is supported, not deprecated
+        self.assertIn("supported input word", self.text)
 
     # --- 14. carried goal and history file ---
 
@@ -1188,7 +1188,7 @@ class RunReportDocTests(unittest.TestCase):
         change = read(CHANGELOG).split("## [2026.11.09-3]", 1)
         self.assertEqual(2, len(change), "CHANGELOG lacks 2026.11.09-3")
         self.assertIn("after-handoff", change[1].split("\n## [", 1)[0])
-        self.assertTrue(read(CHANGELOG).split("## [", 1)[1].startswith("2026.11.10-4]"))
+        self.assertTrue(read(CHANGELOG).split("## [", 1)[1].startswith("2026.11.10-5]"))
 
     def test_BH52_readmes_changelog(self):
         for name, text in (("README.md", self.en), ("README.ko.md", self.ko)):
@@ -1313,6 +1313,70 @@ class SkillFrontmatterTests(unittest.TestCase):
     def test_engine_has_no_commands_directory(self):
         # The plugin registers skills; commands/ stays empty so no second /handoff appears.
         self.assertFalse((ROOT / "commands").exists())
+
+
+LEGACY_TOKENS = ("결정", "변경 없음", "반영", "무관", "독립", "채택/기각", "계속")
+
+
+class EnglishSkillTests(unittest.TestCase):
+    """Skills are English only; the legacy Korean markers stay accepted and are listed outside the skills."""
+
+    def test_skills_hold_no_hangul(self):
+        found = [f"{p.relative_to(ROOT)}:{n}" for p in sorted((ROOT / "skills").rglob("*")) if p.is_file()
+                 for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
+                 if re.search("[\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f]", line)]
+        self.assertEqual([], found)
+
+    def test_skills_point_at_the_legacy_list_once(self):
+        for path in (HANDOFF, RESUME):
+            with self.subTest(skill=path.parent.name):
+                self.assertEqual(1, read(path).count("legacy Korean markers remain accepted (listed in CHANGELOG"))
+
+    def test_changelog_and_readme_ko_list_every_legacy_token(self):
+        entry = read(CHANGELOG).split("## [2026.11.10-5]", 1)[1].split("\n## [", 1)[0]
+        ko = read(README_KO)
+        for token in LEGACY_TOKENS:
+            with self.subTest(token=token):
+                self.assertIn(f"`{token}`", entry)
+                self.assertIn(f"`{token}`", ko)
+        for english in ("decision:", "unchanged", "reflected:", "unrelated", "(independent)", "<adopted/rejected>"):
+            with self.subTest(english=english):
+                self.assertIn(english, entry)
+
+
+HANGUL = re.compile("[\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f]")
+KOREAN_DOCS = re.compile(r"^(README\.ko\.md|docs/[^/]+\.ko\.md)$")
+# The only engine lines outside tests/ that may hold Korean: legacy markers and words accepted as input.
+LEGACY_INPUT_LINES = {
+    "scripts/check_handoff.py": ("LABELS = (", "NONE_WORDS = (", "LEGACY_UNRELATED, LEGACY_REFLECTED = ",
+                                 "DEP_RE = re.compile(", 'startswith(("- none", '),
+    "scripts/handoff_state.py": ("CONTINUE_WORD = ",),
+}
+
+
+class EnglishEngineTests(unittest.TestCase):
+    """Korean is left only in the Korean docs, the accepted legacy input literals, the CHANGELOG legacy list,
+    and tests/ (compatibility fixtures and Unicode input data)."""
+
+    def test_hangul_only_where_allowed(self):
+        found = []
+        for path in tracked_files():
+            rel = path.relative_to(ROOT).as_posix()
+            if not path.is_file() or rel.startswith("tests/") or KOREAN_DOCS.match(rel):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            if rel == "CHANGELOG.md":
+                head, rest = text.split("## [2026.11.10-5]", 1)
+                entry, after = rest.split("\n## [", 1)
+                text = head + after  # the 2026.11.10-5 entry holds the legacy list
+            allowed = LEGACY_INPUT_LINES.get(rel, ())
+            for n, line in enumerate(text.splitlines(), 1):
+                if HANGUL.search(line) and not any(a in line for a in allowed):
+                    found.append(f"{rel}:{n}: {line.strip()[:80]}")
+        self.assertEqual([], found, "Korean outside the allowed places:\n" + "\n".join(found))
 
 
 HANDLING_VALUES = [

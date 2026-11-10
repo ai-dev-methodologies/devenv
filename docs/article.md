@@ -1,4 +1,4 @@
-[한국어](article.ko.md)
+[Korean](article.ko.md)
 
 # When a written rule is not enough: enforcing context discipline in Claude Code with hooks
 
@@ -121,7 +121,7 @@ The last finding means an enforcement hook can stop working with no visible sign
 | whether the file is complete (`check_handoff.py`): open items with what, why and how, filled Decisions rows, live items with six keys, the goal carried unchanged unless a change is recorded | the decisions and their reasons |
 | secrets in known token formats, reported by kind and line, never by value | the exact next step |
 | user messages after the last `/handoff` that the file does not quote | |
-| whether a resume continues: only the argument `--c`, `--continue` or `계속`, never text in the file | |
+| whether a resume continues: only the argument `--c` or `--continue` (or the legacy Korean continue word), never text in the file | |
 
 The handoff skill never stops running work and does not report until the checker exits 0. Before its briefing, a resume makes at most:
 

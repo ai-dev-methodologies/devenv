@@ -1821,7 +1821,7 @@ def base_checker_module(cls):
 
 
 class BaseStdoutTest(SignalCase):
-    # 이 WU의 회귀 고정. checker 문구를 의도적으로 바꾸는 WU에서 기준 커밋을 갱신한다
+    # Regression pin of this WU. A WU that changes the checker wording on purpose updates the base commit
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -1870,11 +1870,18 @@ class BaseStdoutTest(SignalCase):
         with self.subTest(case="usage"):
             old, new = self.both([])
             self.assertEqual(old.returncode, 2)
-            expected = old.stdout.replace("(over 16 KiB)", "(over 24 KiB)")  # the one enumerated usage-line difference
+            # the enumerated usage differences: the size line, and the labels and none-word lines in English (2026.11.10-5)
+            labels_old = "  - all three labels  what:/\ubb34\uc5c7\uc744  why:/\uc65c  how:/\uc5b4\ub5bb\uac8c   (case-insensitive, Korean or English), or"
+            labels_new = "  - all three labels  what:  why:  how:   (case-insensitive; the Korean labels in LABELS count too), or"
+            none_old, none_new = "none or \uc5c6\uc74c is no entry", "none or its Korean word is no entry"
+            expected = (old.stdout.replace("(over 16 KiB)", "(over 24 KiB)").replace(labels_old, labels_new)
+                        .replace(none_old, none_new))
             self.assertEqual(old.stdout.count("(over 16 KiB)"), 1)
+            self.assertEqual(old.stdout.count(labels_old), 1)
+            self.assertEqual(old.stdout.count(none_old), 1)
             self.assertEqual((new.returncode, new.stdout), (old.returncode, expected))
             differing = [1 for a, b in zip(old.stdout.splitlines(), new.stdout.splitlines()) if a != b]
-            self.assertEqual(len(differing), 1)
+            self.assertEqual(len(differing), 3)
         with self.subTest(case="unreadable"):
             old, new = self.both([str(self.tmp / "nope.md")])
             self.assertEqual(old.returncode, 2)
@@ -1917,7 +1924,7 @@ class AfterHandoffTests(SignalCase):
         super().setUp()
         self.mod = load_checker()
         self.text = self.base.replace("**Continues:** none", f"**Continues:** none\n**Session:** {SID}", 1)
-        self.text += f"\n## Before Handoff\n\n- 「{BEFORE_1}」 → 무관\n"  # the one message before the fixture's /handoff
+        self.text += f"\n## Before Handoff\n\n- 「{BEFORE_1}」 → unrelated\n"  # the one message before the fixture's /handoff
         self.lines = TRANSCRIPT.read_text(encoding="utf-8").splitlines()
 
     def put(self, lines):
@@ -1931,7 +1938,7 @@ class AfterHandoffTests(SignalCase):
         return self.run_text(text, args=("--git", "yes"), extra_env={"CLAUDE_CODE_SESSION_ID": SID, **extra})
 
     def with_after(self, *quotes, text=None):
-        body = "\n".join(f"- 「{q}」 → 결정: 변경 없음" for q in quotes)
+        body = "\n".join(f"- 「{q}」 → decision: unchanged" for q in quotes)
         return (text or self.text).rstrip("\n") + f"\n\n## After Handoff\n\n{body}\n"
 
     def texts(self, lines):
@@ -1971,8 +1978,8 @@ class AfterHandoffTests(SignalCase):
 
     def test_AH3b_quoted_in_another_section_fails(self):
         self.put(self.lines[:CUT_DELIVERED])
-        notes = "".join(f"- 「{q}」 → 결정: 변경 없음\n" for q in (M1, M2))
-        text = self.text.rstrip("\n") + f"\n\n## Notes\n\n{notes}\n## After Handoff\n\n- 「다른 줄」 → 결정: 변경 없음\n"
+        notes = "".join(f"- 「{q}」 → decision: unchanged\n" for q in (M1, M2))
+        text = self.text.rstrip("\n") + f"\n\n## Notes\n\n{notes}\n## After Handoff\n\n- 「another line」 → decision: unchanged\n"
         self.assertFailsWith(self.gate(text), '[FAIL] 2 user message(s) after the last /handoff are not in "After Handoff":')
 
     def test_AH4_full_transcript(self):
@@ -1989,7 +1996,7 @@ class AfterHandoffTests(SignalCase):
 
     def test_AH18b_answer_quoted_only_inside_another_line_fails(self):
         self.put(self.lines[:FULL])
-        text = self.with_after(M1).rstrip("\n") + f"\n- 「{M2}」 → 결정: 「{A1}」 답과 같다\n"
+        text = self.with_after(M1).rstrip("\n") + f"\n- 「{M2}」 → decision: same as the 「{A1}」 answer\n"
         proc = self.gate(text)
         self.assertFailsWith(proc, '[FAIL] 1 user message(s) after the last /handoff are not in "After Handoff":')
         self.assertIn(f"\n  - 「{A1}」 (06:56:30Z)\n", proc.stdout)
@@ -1997,21 +2004,21 @@ class AfterHandoffTests(SignalCase):
     def test_AH5_match_rule(self):
         def left(msg, section):
             return [t for t, _ in self.mod.unrecorded([(msg, "2026-11-09T07:00:00.000Z")], section)]
-        respaced = "- 「Move part C to the\n  second   round and\tship A and B first.」 → 결정: C를 미룸"
+        respaced = "- 「Move part C to the\n  second   round and\tship A and B first.」 → decision: defer C"
         self.assertEqual(left(M1, respaced), [])
-        self.assertEqual(left(M1, f"- 「{M1[:39]}」 → 결정: 변경 없음"), [M1])  # 39 characters are not enough
-        self.assertEqual(left(M1, f"- 「{M1[:40]}… 」 → 결정: 변경 없음"), [])  # 40 are
-        self.assertEqual(left(M1, "- 「다른 줄」 → 결정: " + M1), [M1])  # the quote opens with 「
-        self.assertEqual(left("A", "- 「「A」안은 버리고 「B」안으로 가자.」 → 결정: B안"), ["A"])  # nested: no line
-        self.assertEqual(left("계속", f"- 「{M1}」 → 결정: 「계속」으로 진행"), ["계속"])
-        self.assertEqual(left("A", "  - 「A」 → 결정: 변경 없음"), [])  # an indented item still opens one
+        self.assertEqual(left(M1, f"- 「{M1[:39]}」 → decision: unchanged"), [M1])  # 39 characters are not enough
+        self.assertEqual(left(M1, f"- 「{M1[:40]}… 」 → decision: unchanged"), [])  # 40 are
+        self.assertEqual(left(M1, "- 「another line」 → decision: " + M1), [M1])  # the quote opens with 「
+        self.assertEqual(left("A", "- 「「A」안은 버리고 「B」안으로 가자.」 → decision: plan B"), ["A"])  # nested: no line
+        self.assertEqual(left("계속", f"- 「{M1}」 → decision: go on with 「계속」"), ["계속"])
+        self.assertEqual(left("A", "  - 「A」 → decision: unchanged"), [])  # an indented item still opens one
         twins = [(M1 + " Then C.", "2026-11-09T07:00:00.000Z"), (M1 + " Then D.", "2026-11-09T07:01:00.000Z")]
-        self.assertEqual(self.mod.unrecorded(twins, f"- 「{M1}」 → 결정: 변경 없음"), twins[1:])  # one quote each
-        self.assertEqual(left(A1, f"- 「{A1}」 → 결정: 변경 없음"), [])
-        self.assertEqual(left(A1, f"- 「{A1}, maybe」 → 결정: 변경 없음"), [A1])  # a short message is quoted whole
-        self.assertEqual(left("ok", "- 「Ship it after the review」 → 결정: ok로 둔다"), ["ok"])
-        self.assertEqual(left("ok", "- 「ok」 → 결정: 변경 없음"), [])
-        self.assertEqual(left(M2, f"- 「{unicodedata.normalize('NFD', M2)}」 → 결정: 변경 없음"), [])
+        self.assertEqual(self.mod.unrecorded(twins, f"- 「{M1}」 → decision: unchanged"), twins[1:])  # one quote each
+        self.assertEqual(left(A1, f"- 「{A1}」 → decision: unchanged"), [])
+        self.assertEqual(left(A1, f"- 「{A1}, maybe」 → decision: unchanged"), [A1])  # a short message is quoted whole
+        self.assertEqual(left("ok", "- 「Ship it after the review」 → decision: keep ok"), ["ok"])
+        self.assertEqual(left("ok", "- 「ok」 → decision: unchanged"), [])
+        self.assertEqual(left(M2, f"- 「{unicodedata.normalize('NFD', M2)}」 → decision: unchanged"), [])
         self.assertNotEqual(unicodedata.normalize("NFD", M2), M2)
 
     def test_AH6_classifier_table(self):
@@ -2375,9 +2382,18 @@ class NextStepDepsTest(CheckerCase):
             with self.subTest(marker=marker):
                 self.assertPasses(self.check(f"1. Prepare\n2. 🔴 user: approve the plan\n3. Run the pilot {marker}"))
 
+    def test_BH23_english_and_legacy_markers_pass_and_misspelt_ones_fail(self):
+        for marker in ("(independent)", "(Independent)", "(독립)"):
+            with self.subTest(marker=marker):
+                self.assertPasses(self.check(f"1. 🔴 user: approve\n2. Run the pilot {marker}"))
+        for marker in ("(independant)", "(indep)", "independent", "(독 립)"):
+            with self.subTest(marker=marker):
+                proc, codes = self.codes(f"1. 🔴 user: approve\n2. Run the pilot {marker}")
+                self.assertEqual(codes, {self.CODE: 1})
+
     def test_BH23_missing_marker_fails_with_code_and_message(self):
-        proc, codes = self.codes("1. Prepare\n2. 🔴 user: approve the plan\n3. Run the pilot\n4. Tidy docs (독립)")
-        self.assertFailsWith(proc, "Exact Next Step step 3 comes after the 🔴 user step 2 and lacks (독립) or (← n)")
+        proc, codes = self.codes("1. Prepare\n2. 🔴 user: approve the plan\n3. Run the pilot\n4. Tidy docs (independent)")
+        self.assertFailsWith(proc, "Exact Next Step step 3 comes after the 🔴 user step 2 and lacks (independent) or (← n)")
         self.assertEqual(codes, {self.CODE: 1})
         self.assertNotIn("step 4", proc.stdout)
         self.assertNotIn("step 1", proc.stdout)
@@ -2391,7 +2407,7 @@ class NextStepDepsTest(CheckerCase):
     def test_BH23_dependency_on_itself_or_a_later_step_fails(self):
         for marker in ("(← 3)", "(← 4)", "(<- 3)"):
             with self.subTest(marker=marker):
-                proc, codes = self.codes(f"1. 🔴 user: approve\n2. Prepare (독립)\n3. Run the pilot {marker}\n4. Tidy (독립)")
+                proc, codes = self.codes(f"1. 🔴 user: approve\n2. Prepare (independent)\n3. Run the pilot {marker}\n4. Tidy (independent)")
                 self.assertEqual(codes, {self.CODE: 1})
 
     def test_BH23_bullets_and_indented_lines_are_not_steps(self):
@@ -2429,12 +2445,12 @@ G = "record the pilot decision"  # the /handoff arguments
 BEFORE_SHOWN = [f"  - 「{B1}」 (07:00:30Z)", f"  - 「{B2}」 (07:01:00Z)", f"  - 「{B3}」 (07:02:30Z)",
                 f"  - 「{B4}」 (07:03:00Z)", f"  - 「{B5}」 (07:04:00Z)", f"  - 「{G}」 (07:05:00Z)"]
 BEFORE_HEAD = ('[FAIL] {n} user message(s) before the last /handoff are not in "Before Handoff" '
-               "(write - 「…」 → 반영: <section> | 무관):")
-REVIEWS_HEAD = '[FAIL] {n} review run(s) of this session are not in "Reviews" (fill <verdict> and <채택/기각>):'
+               "(write - 「…」 → reflected: <section> | unrelated):")
+REVIEWS_HEAD = '[FAIL] {n} review run(s) of this session are not in "Reviews" (fill <verdict> and <adopted/rejected>):'
 R1 = ("a1111111111111111", "demo-tools:critic")
 R2 = ("aplanrev-0123456789abcdef", "demo-tools:code-review")
 W1 = ("wf_0123abcd-4e5", "workflow")
-R2_SHOWN = "  - aplanrev-0123456789abcdef · demo-tools:code-review · <verdict> · <채택/기각>"
+R2_SHOWN = "  - aplanrev-0123456789abcdef · demo-tools:code-review · <verdict> · <adopted/rejected>"
 SENTINELS = ("regression pilot", "full suite run", "parser check", "parser plan before", "Plan B", "pilot decision")
 TS = "2026-11-09T07:00:00.000Z"
 HANDOFF_INPUT = "<command-message>handoff</command-message>\n<command-name>/handoff</command-name>"
@@ -2524,6 +2540,20 @@ class BeforeGateTests(GateCase):
         self.assertPasses(proc)
         self.assertNotIn("WARNING", proc.stdout)
 
+    def test_BH2b_english_legacy_and_mixed_markers_pass_alike(self):
+        legacy = self.section("before_ok.md")
+        english = legacy.replace("→ 반영: ", "→ reflected: ").replace("→ 무관", "→ unrelated")
+        self.assertNotIn("반영", english)
+        self.assertNotIn("무관", english)
+        mixed = legacy.replace("→ 무관", "→ unrelated").replace("→ 반영: Exact Next Step", "→ reflected: Exact Next Step")
+        after = "\n## After Handoff\n\n- 「unused」 → decision: unchanged\n"
+        for name, section in (("english", english), ("legacy", legacy), ("mixed", mixed)):
+            with self.subTest(markers=name):
+                proc = self.gate(self.text + section + after)
+                self.assertPasses(proc)
+                self.assertNotIn("WARNING", proc.stdout)
+                self.assertEqual(self.record()["before_unrelated"], 1)
+
     def test_BH3_quote_only_fails(self):
         proc = self.gate(self.text + self.section("before_bypass.md"))
         self.assertFailsWith(proc, BEFORE_HEAD.format(n=3))
@@ -2559,8 +2589,13 @@ class BeforeGateTests(GateCase):
         self.assertIn(line, ok)
         cases = {"→ 반영: Decisions Made": True, "→ 무관": True, "→ 무관 (잡담)": True,
                  "→ 반영: Decisions": False, "→ 반영: No Such Section": False, "→ 반영: After Handoff": False,
-                 "→ 반영: Before Handoff": False, "": False, "→ 결정: x": False, "→ 반영:": False}
-        after = "\n## After Handoff\n\n- 「unused」 → 결정: 변경 없음\n"
+                 "→ 반영: Before Handoff": False, "": False, "→ 결정: x": False, "→ 반영:": False,
+                 "→ reflected: Decisions Made": True, "→ reflected: Exact Next Step": True, "→ unrelated": True,
+                 "→ unrelated (chat)": True, "→ reflected: Decisions": False, "→ reflected: No Such Section": False,
+                 "→ reflected: After Handoff": False, "→ reflected: Before Handoff": False, "→ reflected:": False,
+                 "→ reflected Decisions Made": False, "→ recorded: Decisions Made": False, "→ unrelate": False,
+                 "→ unrelatedness": False, "→ Unrelated": False, "→ decision: x": False}
+        after = "\n## After Handoff\n\n- 「unused」 → decision: unchanged\n"
         for tail, passes in cases.items():
             with self.subTest(tail=tail):
                 proc = self.gate(self.text + ok.replace(line, f"- 「{B3}」 {tail}".rstrip()) + after)
@@ -2668,31 +2703,31 @@ class MatchRuleTests(GateCase):
         return [t for t, _ in missing]
 
     def test_BH6_match_rule(self):
-        self.assertEqual(self.left("ok", "- 「ok」 → 결정: 변경 없음"), [])
-        self.assertEqual(self.left("ok", "- 「Ship it after the review」 → 결정: ok로 둔다"), ["ok"])
-        self.assertEqual(self.left("ok", "- 「ok, maybe」 → 결정: 변경 없음"), ["ok"])
-        self.assertEqual(self.left(M1, f"- 「{M1}」 → 결정: 변경 없음"), [])
-        self.assertEqual(self.left(M1, f"- 「{M1[:40]}… 」 → 결정: 변경 없음"), [M1])  # the first 40 alone
-        self.assertEqual(self.left(M1, f"- 「{M1[:40]}…{M1[-40:]}」 → 결정: 변경 없음"), [M1])  # 300 or less: whole
-        self.assertEqual(self.left(UNREL, f"- 「{UNREL[:40]}…{UNREL[-40:]}」 → 결정: 변경 없음"), [UNREL])
-        self.assertEqual(self.left(M1, "- 「다른 줄」 → 결정: " + M1), [M1])  # the last 40 need the closing 」
-        respaced = "- 「Move part C to the\n  second   round and\tship A and B first.」 → 결정: C를 미룸"
+        self.assertEqual(self.left("ok", "- 「ok」 → decision: unchanged"), [])
+        self.assertEqual(self.left("ok", "- 「Ship it after the review」 → decision: keep ok"), ["ok"])
+        self.assertEqual(self.left("ok", "- 「ok, maybe」 → decision: unchanged"), ["ok"])
+        self.assertEqual(self.left(M1, f"- 「{M1}」 → decision: unchanged"), [])
+        self.assertEqual(self.left(M1, f"- 「{M1[:40]}… 」 → decision: unchanged"), [M1])  # the first 40 alone
+        self.assertEqual(self.left(M1, f"- 「{M1[:40]}…{M1[-40:]}」 → decision: unchanged"), [M1])  # 300 or less: whole
+        self.assertEqual(self.left(UNREL, f"- 「{UNREL[:40]}…{UNREL[-40:]}」 → decision: unchanged"), [UNREL])
+        self.assertEqual(self.left(M1, "- 「another line」 → decision: " + M1), [M1])  # the last 40 need the closing 」
+        respaced = "- 「Move part C to the\n  second   round and\tship A and B first.」 → decision: defer C"
         self.assertEqual(self.left(M1, respaced), [])
         long = " ".join(f"word{i}" for i in range(80))
         self.assertGreater(len(long), 500)
         shown = self.mod.shown_quotes([(long, TS)])[0]
         self.assertEqual(shown, "「" + long[:259] + "…" + long[-40:] + "」 (07:00:00Z)")
-        self.assertEqual(self.left(long, f"- {shown.rsplit(' (', 1)[0]} → 결정: 변경 없음"), [])
-        self.assertEqual(self.left(long, f"- 「{long[:300]}…」 → 결정: 변경 없음"), [long])  # the -3 cut
-        self.assertEqual(self.left(long, f"- 「…{long[-40:]}」 → 결정: 변경 없음"), [long])  # the last 40 alone
-        self.assertEqual(self.left(long, f"- 「{long[:259]}…{long[-40:]} more」 → 결정: 변경 없음"), [long])  # 」 right after
-        self.assertEqual(self.left(long, f"- 「{long[:258]}…{long[-40:]}」 → 결정: 변경 없음"), [long])
-        self.assertEqual(self.left(long, f"- 「{long[:259]}」 → 결정: {long[-40:]}」"), [])  # one item holds both
-        self.assertEqual(self.left(long, f"- 「{long[:259]}」 → 결정: x\n- 「{long[-40:]}」 → 결정: x"), [long])
-        self.assertEqual(self.left(M2, f"- 「{unicodedata.normalize('NFD', M2)}」 → 결정: 변경 없음"), [])
+        self.assertEqual(self.left(long, f"- {shown.rsplit(' (', 1)[0]} → decision: unchanged"), [])
+        self.assertEqual(self.left(long, f"- 「{long[:300]}…」 → decision: unchanged"), [long])  # the -3 cut
+        self.assertEqual(self.left(long, f"- 「…{long[-40:]}」 → decision: unchanged"), [long])  # the last 40 alone
+        self.assertEqual(self.left(long, f"- 「{long[:259]}…{long[-40:]} more」 → decision: unchanged"), [long])  # 」 right after
+        self.assertEqual(self.left(long, f"- 「{long[:258]}…{long[-40:]}」 → decision: unchanged"), [long])
+        self.assertEqual(self.left(long, f"- 「{long[:259]}」 → decision: {long[-40:]}」"), [])  # one item holds both
+        self.assertEqual(self.left(long, f"- 「{long[:259]}」 → decision: x\n- 「{long[-40:]}」 → decision: x"), [long])
+        self.assertEqual(self.left(M2, f"- 「{unicodedata.normalize('NFD', M2)}」 → decision: unchanged"), [])
         twice = [("yes", False, TS), ("yes", False, "2026-11-09T07:05:00.000Z")]
-        self.assertEqual(self.mod.match_quotes(twice, "- 「yes」 → 결정: x")[0], [("yes", "2026-11-09T07:05:00.000Z")])
-        self.assertEqual(self.mod.match_quotes(twice, "- 「yes」 → 결정: x\n- 「yes」 → 결정: y")[0], [])
+        self.assertEqual(self.mod.match_quotes(twice, "- 「yes」 → decision: x")[0], [("yes", "2026-11-09T07:05:00.000Z")])
+        self.assertEqual(self.mod.match_quotes(twice, "- 「yes」 → decision: x\n- 「yes」 → decision: y")[0], [])
 
     def test_BH6_length_boundaries(self):
         def sized(n):
@@ -2701,16 +2736,16 @@ class MatchRuleTests(GateCase):
             with self.subTest(n=n):
                 m = sized(n)
                 self.assertEqual(len(m), n)
-                self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-40:]}」 → 결정: x"), [m])
-                self.assertEqual(self.left(m, f"- 「{m}」 → 결정: x"), [])
+                self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-40:]}」 → decision: x"), [m])
+                self.assertEqual(self.left(m, f"- 「{m}」 → decision: x"), [])
         m = sized(301)
-        self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-40:]}」 → 결정: x"), [])
-        self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-39:]}」 → 결정: x"), [m])
+        self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-40:]}」 → decision: x"), [])
+        self.assertEqual(self.left(m, f"- 「{m[:259]}…{m[-39:]}」 → decision: x"), [m])
         for n in (39, 40):
             with self.subTest(n=n):
                 m = sized(n)
-                self.assertEqual(self.left(m, f"- 「{m}」 → 결정: x"), [])
-                self.assertEqual(self.left(m, f"- 「다른 줄」 → 결정: 「{m}」"), [] if n == 40 else [m])
+                self.assertEqual(self.left(m, f"- 「{m}」 → decision: x"), [])
+                self.assertEqual(self.left(m, f"- 「another line」 → decision: 「{m}」"), [] if n == 40 else [m])
 
     def test_BH6_shown_line_round_trip(self):
         texts = [("word " * 130)[:n - 1] + "x" for n in (1, 39, 40, 41, 156, 259, 299, 300, 301, 302, 640)]
@@ -2721,49 +2756,49 @@ class MatchRuleTests(GateCase):
             for cut in ((False, True) if len(text) >= 40 else (False,)):
                 with self.subTest(n=len(text), cut=cut):
                     line = self.mod.quote_line(text, TS)
-                    self.assertEqual(self.mod.match_quotes([(text, cut, TS)], f"- {line} → 반영: Decisions Made",
+                    self.assertEqual(self.mod.match_quotes([(text, cut, TS)], f"- {line} → reflected: Decisions Made",
                                                            titles), ([], 0))
                     bare = line.rsplit(" (", 1)[0]
-                    self.assertEqual(self.left(text, f"- {bare} → 결정: 변경 없음", s=cut), [])
+                    self.assertEqual(self.left(text, f"- {bare} → decision: unchanged", s=cut), [])
 
     def test_BH6_stripped_quote_own_text(self):
         n = OWN_LONG
-        self.assertEqual(self.left(n, f"- 「{n}」 → 결정: x", s=True), [])
-        self.assertEqual(self.left(n, f"- 「{LONG_QUOTE} {n}」 → 결정: x", s=True), [])  # the quote along
-        self.assertEqual(self.left(n, f"- 「…{n}」 → 결정: x", s=True), [])
-        self.assertEqual(self.left(n, f"- 「…{n}」 → 결정: x", s=False), [n])
-        self.assertEqual(self.left(n, f"- 「{n[:40]}…{n[-40:]}」 → 결정: x", s=True), [n])
-        self.assertEqual(self.left(n, f"- 「{n[1:]}」 → 결정: x", s=True), [n])
+        self.assertEqual(self.left(n, f"- 「{n}」 → decision: x", s=True), [])
+        self.assertEqual(self.left(n, f"- 「{LONG_QUOTE} {n}」 → decision: x", s=True), [])  # the quote along
+        self.assertEqual(self.left(n, f"- 「…{n}」 → decision: x", s=True), [])
+        self.assertEqual(self.left(n, f"- 「…{n}」 → decision: x", s=False), [n])
+        self.assertEqual(self.left(n, f"- 「{n[:40]}…{n[-40:]}」 → decision: x", s=True), [n])
+        self.assertEqual(self.left(n, f"- 「{n[1:]}」 → decision: x", s=True), [n])
 
     def test_BH6_multiline_message_needs_the_shown_line(self):
         raw = "Do these:\n- step one of the plan with enough words\n- step two of the plan with enough words"
         n = self.mod.normalize(raw)
-        self.assertEqual(self.left(n, f"- 「{raw}」 → 결정: 변경 없음"), [n])  # its list lines split the item
-        self.assertEqual(self.left(n, f"- 「{n}」 → 결정: 변경 없음"), [])
+        self.assertEqual(self.left(n, f"- 「{raw}」 → decision: unchanged"), [n])  # its list lines split the item
+        self.assertEqual(self.left(n, f"- 「{n}」 → decision: unchanged"), [])
 
     def test_BH6_moved_after_cases(self):
         twins = [(M1 + " Then C.", False, TS), (M1 + " Then D.", False, "2026-11-09T07:01:00.000Z")]
-        missing, _ = self.mod.match_quotes(twins, f"- 「{M1}」 → 결정: 변경 없음")
+        missing, _ = self.mod.match_quotes(twins, f"- 「{M1}」 → decision: unchanged")
         self.assertEqual([t for t, _ in missing], [M1 + " Then C.", M1 + " Then D."])
-        both = "".join(f"- 「{t}」 → 결정: 변경 없음\n" for t, _, _ in twins)
+        both = "".join(f"- 「{t}」 → decision: unchanged\n" for t, _, _ in twins)
         self.assertEqual(self.mod.match_quotes(twins, both)[0], [])
-        self.assertEqual(self.left("A", "- 「「A」안은 버리고 「B」안으로 가자.」 → 결정: B안"), ["A"])
-        self.assertEqual(self.left("A", "  - 「A」 → 결정: 변경 없음"), [])  # an indented item still opens one
+        self.assertEqual(self.left("A", "- 「「A」안은 버리고 「B」안으로 가자.」 → decision: plan B"), ["A"])
+        self.assertEqual(self.left("A", "  - 「A」 → decision: unchanged"), [])  # an indented item still opens one
 
     def test_BH6_short_own_text_keeps_the_quote(self):
         said = f"{LONG_QUOTE} keep it"
         got = self.mod.read_session(self.put_lines([user_rec("first one"), handoff_rec(), user_rec(said)]))
         whole = self.mod.normalize(said)
         self.assertEqual(got["after"], [(whole, False, TS)])
-        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「{said}」 → 결정: x")[0], [])
-        self.assertEqual(self.mod.match_quotes(got["after"], "- 「keep it」 → 결정: x")[0], [(whole, TS)])
-        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「…{LONG_QUOTE[-30:]} keep it」 → 결정: x")[0],
+        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「{said}」 → decision: x")[0], [])
+        self.assertEqual(self.mod.match_quotes(got["after"], "- 「keep it」 → decision: x")[0], [(whole, TS)])
+        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「…{LONG_QUOTE[-30:]} keep it」 → decision: x")[0],
                          [(whole, TS)])
         path = "'/home/demo/projects/sample-app/src/config/settings.py' 이 파일 지워"
         got = self.mod.read_session(self.put_lines([user_rec("first one"), handoff_rec(), user_rec(path)]))
         self.assertEqual(got["after"], [(path, False, TS)])
-        self.assertEqual(self.mod.match_quotes(got["after"], "- 「이 파일 지워」 → 결정: x")[0], [(path, TS)])
-        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「{path}」 → 결정: x")[0], [])
+        self.assertEqual(self.mod.match_quotes(got["after"], "- 「이 파일 지워」 → decision: x")[0], [(path, TS)])
+        self.assertEqual(self.mod.match_quotes(got["after"], f"- 「{path}」 → decision: x")[0], [])
 
 
 class WindowTests(GateCase):
@@ -2847,8 +2882,8 @@ class AfterQuoteTests(GateCase):
     sid = SID
 
     def with_after(self, *quotes):
-        body = "".join(f"- 「{q}」 → 결정: 변경 없음\n" for q in quotes)
-        return self.text + f"\n## Before Handoff\n\n- 「{BEFORE_1}」 → 무관\n\n## After Handoff\n\n{body}"
+        body = "".join(f"- 「{q}」 → decision: unchanged\n" for q in quotes)
+        return self.text + f"\n## Before Handoff\n\n- 「{BEFORE_1}」 → unrelated\n\n## After Handoff\n\n{body}"
 
     def test_BH9_after_gate_quote_strip(self):
         own = "ship the report after the pilot, not before."
@@ -3003,13 +3038,13 @@ class InterfaceTests(GateCase):
                 self.assertEqual(str(inspect.signature(getattr(self.mod, name))),
                                  str(inspect.signature(getattr(self.old, name))))
         self.assertEqual(self.mod.TRANSCRIPT_MAX_BYTES, self.old.TRANSCRIPT_MAX_BYTES)
-        cases = [([("ok", TS)], "- 「ok」 → 결정: 변경 없음"), ([("ok", TS)], "- 「Ship it after the review」 → 결정: ok로 둔다"),
-                 ([("A", TS)], "  - 「A」 → 결정: 변경 없음"), ([(M1, TS)], f"- 「{M1[:40]}… 」 → 결정: 변경 없음"),
-                 ([(M1 + " Then C.", TS), (M1 + " Then D.", TS)], f"- 「{M1}」 → 결정: 변경 없음")]
+        cases = [([("ok", TS)], "- 「ok」 → decision: unchanged"), ([("ok", TS)], "- 「Ship it after the review」 → decision: keep ok"),
+                 ([("A", TS)], "  - 「A」 → decision: unchanged"), ([(M1, TS)], f"- 「{M1[:40]}… 」 → decision: unchanged"),
+                 ([(M1 + " Then C.", TS), (M1 + " Then D.", TS)], f"- 「{M1}」 → decision: unchanged")]
         for msgs, section in cases:
             with self.subTest(section=section[:30]):
                 self.assertEqual(self.mod.unrecorded(msgs, section), self.old.unrecorded(msgs, section))
-        self.assertEqual(self.mod.unrecorded([("ok", TS)], "- 「ok」 → 결정: 변경 없음"), [])
+        self.assertEqual(self.mod.unrecorded([("ok", TS)], "- 「ok」 → decision: unchanged"), [])
         said = f"{LONG_QUOTE} {OWN_LONG}"
         path = self.put_lines([user_rec("first one"), handoff_rec(), user_rec(said)])
         self.assertEqual(self.mod.messages_after_handoff(path), self.old.messages_after_handoff(path))
@@ -3039,7 +3074,8 @@ class ReviewsGateTests(GateCase):
         self.assertEqual((self.record()["reviews_found"], self.record()["reviews_recorded"]), (3, 3))
         self.assertEqual(self.record()["before_handoff_lines"], 1)
         raw = (self.tmp / "runs.jsonl").read_text(encoding="utf-8")
-        for sentinel in SENTINELS + ("adopted", "retry cap"):
+        # cell text only: the printed placeholder <adopted/rejected> is the checker's own wording
+        for sentinel in SENTINELS + ("adopted the", "adopted both", "retry cap", "cache rewrite"):
             self.assertNotIn(sentinel, raw)
 
     def test_BH14b_run_id_missing_warns(self):
@@ -3099,6 +3135,9 @@ class ReviewsGateTests(GateCase):
             f"- {rid} · demo-tools:code-review ·  · adopted": False,
             f"- {rid} · demo-tools:code-review · approve · [채택/기각]": False,
             f"- {rid} · demo-tools:code-review · approve · <채택/기각>": False,
+            f"- {rid} · demo-tools:code-review · approve · <adopted/rejected>": False,
+            f"- {rid} · demo-tools:code-review · approve · [adopted/rejected]": False,
+            f"- {rid} · demo-tools:code-review · approve · rejected: out of scope": True,
             f"- note on {rid} · demo-tools:code-review · approve · adopted": False,
             f"- {rid}0 · demo-tools:code-review · approve · adopted": False,
             f"- {rid[:-1]} · demo-tools:code-review · approve · adopted": False,

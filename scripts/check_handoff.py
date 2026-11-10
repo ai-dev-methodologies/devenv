@@ -6,7 +6,7 @@ Usage: check_handoff.py <session-file> [--git yes|no]
 Open items (handoff.md Step 1): every bullet under "What Has NOT Been Tried Yet" and "Decisions Made"
 must carry what/why/how, or point at a design file. An item passes when its text (the bullet plus
 its indented continuation lines) contains either
-  - all three labels  what:/무엇을  why:/왜  how:/어떻게   (case-insensitive, Korean or English), or
+  - all three labels  what:  why:  how:   (case-insensitive; the Korean labels in LABELS count too), or
   - a path that looks like a design file (…-design.md / …-plan.md / plans/…).
 Items shorter than MIN_ITEM_CHARS are treated as status lines, not work items, and skipped.
 
@@ -22,7 +22,7 @@ Resume contract (what /resume-handoff needs without running anything but handoff
     may be none); Origin starts with an absolute path. When Continues names a file that has the same
     section, only the keys that file carries are compared: Origin is byte-identical to it, its Changes
     entries are the first entries here unchanged, Goal and Done-when are byte-identical unless Changes
-    gained an entry, and its Constraints entries (split at `; `; none or 없음 is no entry) are the first
+    gained an entry, and its Constraints entries (split at `; `; none or its Korean word is no entry) are the first
     entries here, whole and unchanged, unless a new Changes entry names `Constraints:`; a new entry
     carries a quoted user sentence. Both sides are compared with secret-like values replaced by
     REDACTED, so masking a carried token is not a change.
@@ -67,7 +67,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SECTIONS = ("What Has NOT Been Tried Yet", "Decisions Made")  # open designs and decisions; blockers and next-step lines are navigation
-LABELS = (("what:", "무엇을"), ("why:", "왜"), ("how:", "어떻게"))
+LABELS = (("what:", "무엇을"), ("why:", "왜"), ("how:", "어떻게"))  # (English, Korean) pairs, both accepted input
 DESIGN_PATH_RE = re.compile(r"(?:[\w./-]*-design\.md|[\w./-]*-plan\.md|\bplans/[\w./-]+)")
 MIN_ITEM_CHARS = 40
 STATE_FIELDS = ("Branch", "HEAD", "Uncommitted changes", "Unpushed commits", "Lockfile changed")
@@ -78,7 +78,7 @@ OPTIONAL_KEYS = ("started", "expected-by")
 LIVE_KEYS = {"Live subagents": ITEM_KEYS, "Live runners": ITEM_KEYS, "Live scheduled": SCHEDULED_KEYS}
 ID_FIELDS = ("Live subagents", "Live runners")  # their `name` is `<name> (<id>)`
 LIVE_FIELDS = tuple(LIVE_KEYS)
-NONE_WORDS = ("none", "없음")
+NONE_WORDS = ("none", "없음")  # the English and the Korean "none", both accepted input
 NO_DECISIONS = "No major decisions made this session."  # byte-identical to the sentence in commands/handoff.md
 NO_DECISIONS_WORDS = ("none", "none.")
 PLACEHOLDER_WORDS = ("...", "…", "tbd", "todo", "fixme", "placeholder", "n/a")
@@ -134,7 +134,8 @@ QUOTE_OWN_MIN = 40  # ... cut only when the user's text after it is this long; a
 SHOWN_MAX = 5
 BEFORE_SECTION = "Before Handoff"
 BEFORE_MAX = 5  # the messages right before the last /handoff input that Before Handoff records, plus its arguments
-UNRELATED, REFLECTED = "무관", "반영"  # a Before Handoff item ends `→ 무관` or `→ 반영: <section title>`
+UNRELATED, REFLECTED = "unrelated", "reflected"  # a Before Handoff item ends `→ unrelated` or `→ reflected: <title>`
+LEGACY_UNRELATED, LEGACY_REFLECTED = "무관", "반영"  # the Korean markers, still accepted (CHANGELOG 2026.11.10-5)
 REVIEWS_SECTION = "Reviews"
 REVIEW_WORDS = ("review", "critic", "judge")  # in the last `:` token of a subagent type
 REVIEW_TYPES = ("architect", "verifier")  # equal to the last `:` token
@@ -476,7 +477,7 @@ def goal_fields(lines: "list[str]") -> "dict[str, str] | None":
 
 
 def constraint_entries(value: str) -> "list[str]":
-    """Entries of a `Constraints` value: `none` or `없음` is no entry; `; ` separates several."""
+    """Entries of a `Constraints` value: `none` or its Korean word (NONE_WORDS) is no entry; `; ` separates several."""
     if value.strip().lower() in NONE_WORDS:
         return []
     return [e for e in CONSTRAINT_SPLIT_RE.split(value.strip()) if e.strip()]
@@ -614,11 +615,13 @@ def next_step_missing(lines: "list[str]") -> bool:
 
 STEP_RE = re.compile(r"^(\d+)\.\s")  # an unindented numbered line; bullets and nested lines are not steps
 USER_STEP = "\U0001F534"  # 🔴
+# (independent), its legacy Korean marker (CHANGELOG 2026.11.10-5), (← n) or (<- n)
 DEP_RE = re.compile(r"\((?:독립|independent|(?:←|<-)\s*(\d+))\)", re.I)
 
 
 def next_step_dep_failures(lines: "list[str]") -> "list[str]":
-    """Every numbered step after the first 🔴 user step carries (독립), (independent), or (← n) of a smaller step n."""
+    """Every numbered step after the first 🔴 user step carries (independent), its legacy Korean marker, or (← n)
+    of a smaller step n."""
     steps: "list[tuple[int, str]]" = []
     for line in (section_body(lines, "Exact Next Step") or "").split("\n"):
         m = STEP_RE.match(line)
@@ -629,7 +632,7 @@ def next_step_dep_failures(lines: "list[str]") -> "list[str]":
     user = next((n for n, text in steps if USER_STEP in text), None)
     if user is None:
         return []
-    return [f"Exact Next Step step {n} comes after the {USER_STEP} user step {user} and lacks (독립) or (← n)"
+    return [f"Exact Next Step step {n} comes after the {USER_STEP} user step {user} and lacks (independent) or (← n)"
             for n, text in steps
             if n > user and not any(m.group(1) is None or int(m.group(1)) < n for m in DEP_RE.finditer(text))]
 
@@ -949,13 +952,15 @@ def unrecorded(msgs: "list[tuple[str, str]]", section_text: str) -> "list[tuple[
 
 
 def disposition(item: str, titles: "set[str]") -> "str | None":
-    """UNRELATED or REFLECTED by the text after the item's last `→ `: `무관` (text may follow after a space) or
-    `반영: <a title in titles>` exactly; None for anything else."""
+    """UNRELATED or REFLECTED by the text after the item's last `→ `: `unrelated` (text may follow after a space) or
+    `reflected: <a title in titles>` exactly; the legacy Korean markers count the same. None for anything else."""
     tail = item.rsplit("→ ", 1)[1] if "→ " in item else ""
-    if tail == UNRELATED or tail.startswith(UNRELATED + " "):
-        return UNRELATED
-    if tail.startswith(REFLECTED + ": ") and tail[len(REFLECTED) + 2:] in titles:
-        return REFLECTED
+    for word in (UNRELATED, LEGACY_UNRELATED):
+        if tail == word or tail.startswith(word + " "):
+            return UNRELATED
+    for word in (REFLECTED, LEGACY_REFLECTED):
+        if tail.startswith(word + ": ") and tail[len(word) + 2:] in titles:
+            return REFLECTED
     return None
 
 
@@ -972,7 +977,7 @@ def quotes_message(item: str, text: str, cut: bool) -> bool:
 
 def match_quotes(msgs: "list[tuple[str, bool, str]]", section_text: str,
                  titles: "set[str] | None" = None) -> "tuple[list[tuple[str, str]], int]":
-    """(the messages the section does not quote as (text, timestamp), how many matched items end in `→ 무관`).
+    """(the messages the section does not quote as (text, timestamp), how many matched items end in `→ unrelated` or its legacy marker).
     msgs are read_session's (own text, quote cut, timestamp). Each `- 「` list item quotes one message at most: a
     message takes the first unused item that quotes it (quotes_message) and, with titles (Before Handoff), carries a
     disposition naming one of them (new-format-spec section 21)."""
@@ -992,7 +997,7 @@ def match_quotes(msgs: "list[tuple[str, bool, str]]", section_text: str,
 
 
 def reflect_titles(lines: "list[str]") -> "set[str]":
-    """The `## ` section titles a Before Handoff item may name after `→ 반영: `: all but Before and After Handoff."""
+    """The `## ` section titles a Before Handoff item may name after `→ reflected: `: all but Before and After Handoff."""
     titles = {normalize(l.strip()[3:]) for l in lines if l.strip().startswith("## ")}
     return titles - {BEFORE_SECTION, AFTER_SECTION}
 
@@ -1189,6 +1194,7 @@ def main(argv: "list[str]") -> int:
         end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
         for item in items_of(lines[start + 1:end]):
             flat = " ".join(item.split())
+            # a status line: short, or opening with the English or Korean "none" (accepted input), or "no "
             if len(flat) < MIN_ITEM_CHARS or flat.lower().startswith(("- none", "- 없음", "- no ")):
                 continue
             if not passes(item):
@@ -1238,9 +1244,9 @@ def main(argv: "list[str]") -> int:
             print(f"  - {quote_line(text, ts)}")
     if reviews:
         print(f'[FAIL] {len(reviews)} review run(s) of this session are not in "{REVIEWS_SECTION}" '
-              "(fill <verdict> and <채택/기각>):")
+              "(fill <verdict> and <adopted/rejected>):")
         for rid, kind in reviews:
-            print(f"  - {rid} · {normalize(kind)} · <verdict> · <채택/기각>")
+            print(f"  - {rid} · {normalize(kind)} · <verdict> · <adopted/rejected>")
     code = 1 if failures or decisions or contract or secrets or after or before or reviews else 0
     if not code:
         print("[PASS] open items carry what/why/how or a design path; Decisions table and resume contract satisfied; "

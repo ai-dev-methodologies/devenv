@@ -285,10 +285,10 @@ several questions joined by ` / `, several choices for one question by `, `), ap
 `## After Handoff` section at the very end of the file (create the section when it is missing):
 
 ```
-- 「<user message verbatim>」 → 결정: <what changed and how>
+- 「<user message verbatim>」 → decision: <what changed and how>
 ```
 
-Write the line even when nothing changed: `→ 결정: 변경 없음`. Copy the message as typed, whole; cut one
+Write the line even when nothing changed: `→ decision: unchanged`. Copy the message as typed, whole; cut one
 over 300 characters to its first 259 characters, `…`, and its last 40. Write `REDACTED` only where the checker's printed line
 shows `REDACTED`. If a message holds a secret the checker does not mask, never write the value:
 report `not ready — unmaskable secret in a message` and tell the user. This is the only exception
@@ -306,8 +306,8 @@ that input's arguments, at most 6. Add one line for each to `## Before Handoff`,
 `## After Handoff` (last in the file when there is no such section):
 
 ```
-- 「<the user's own sentence>」 → 반영: <section title>
-- 「<the user's own sentence>」 → 무관
+- 「<the user's own sentence>」 → reflected: <section title>
+- 「<the user's own sentence>」 → unrelated
 ```
 
 Copy the lines the checker shows. A message that opens with a quote of the assistant's output (a
@@ -315,9 +315,9 @@ Copy the lines the checker shows. A message that opens with a quote of the assis
 when that sentence is 40 characters or more (a shorter one keeps the quote); copying the quote along
 on one line also passes. A message of several lines goes on one line. A line quotes the message
 whole; one over 300 characters is its first 259 characters, `…`, and its last 40. Everything after the last
-`→ ` is the disposition. `반영: <section title>` names a `## ` section of this file exactly as it is
-titled (not Before Handoff or After Handoff). `무관` means the message changed nothing in this file;
-a few words may follow it. A message that gave an instruction or a decision is never `무관`: record
+`→ ` is the disposition. `reflected: <section title>` names a `## ` section of this file exactly as it is
+titled (not Before Handoff or After Handoff). `unrelated` means the message changed nothing in this file;
+a few words may follow it. A message that gave an instruction or a decision is never `unrelated`: record
 it in Decisions Made, Goal (carried), or Exact Next Step, and name that section. When `/handoff`
 runs again, write the section again from the checker's lines for the new `/handoff` input.
 
@@ -331,7 +331,7 @@ after `## Decisions Made`) holds one row per run, in launch order:
 A review run is an Agent whose `subagent_type`, after its last `:`, contains `review`, `critic`, or
 `judge` or equals `architect` or `verifier`, and every Workflow run. The id is the `agentId` or
 `runId` of the run's result. The checker shows each missing row as
-`- <id> · <type> · <verdict> · <채택/기각>`: replace the last two cells. The verdict is the run's
+`- <id> · <type> · <verdict> · <adopted/rejected>`: replace the last two cells. The verdict is the run's
 last return, and `running` when it has not returned by the time `/handoff` runs. Never write a
 transcript path in a row. An agent's transcript is `subagents/agent-<id>.jsonl` and a Workflow's is
 `subagents/workflows/<runId>/`, both under the folder of the `transcript:` path without `.jsonl`.
@@ -339,8 +339,11 @@ Rows of earlier sessions are not carried over: keep their conclusions in Decisio
 Discarded Hypotheses.
 
 **Next-step order.** When a numbered step of `## Exact Next Step` is a 🔴 user step (the user acts
-first), end every later numbered step with `(독립)` (or `(independent)`) when it can start now, or
+first), end every later numbered step with `(independent)` when it can start now, or
 with `(← n)` (or `(<- n)`) naming the earlier step n it waits for.
+
+Write the English markers shown in this step;
+legacy Korean markers remain accepted (listed in CHANGELOG `2026.11.10-5`).
 
 ### Step 6: Check, report and continue
 
@@ -385,12 +388,12 @@ when a user message after the last `/handoff` is not quoted in `## After Handoff
 characters must open its own `- 「` line; a longer one counts when its whole quote, or for one over 300
 characters its first 259 characters and its last 40, appears inside one line): it exits 1 and
 prints each missing message verbatim, at most 5 lines. Fix it by appending the missing lines to
-`## After Handoff` (`→ 결정:` as in Step 5); do not rewrite the body.
+`## After Handoff` (`→ decision:` as in Step 5); do not rewrite the body.
 `before-handoff` fires when a message before the last `/handoff`, or an argument of it, is not in
 `## Before Handoff` with a valid disposition (Step 5). `reviews` fires when a review run of this
 session has no valid row in `## Reviews`: a row copied as the checker shows it still fails until the
 verdict and the last cell are filled. `contract-next-step-deps` fires when a numbered step after the
-first 🔴 step of `## Exact Next Step` lacks `(독립)` or `(← n)`. When the transcript cannot be
+first 🔴 step of `## Exact Next Step` lacks `(independent)` or `(← n)`. When the transcript cannot be
 read, it prints `WARNING: after-handoff messages not checked: <reason>` and
 `WARNING: reviews not checked: <reason>` after the result block and the exit code does not change.
 A review launch whose result carries no `agentId` (`runId` for a Workflow) prints the same reviews
@@ -441,7 +444,7 @@ messages only.
 Then continue the task that was in progress. A user message that arrives after this report gets one
 line in `## After Handoff` (Edit, append only), and the checker runs again. If the user later points
 out a mistake in the file, append its line to `## After Handoff` with the correction after
-`→ 결정:`; Edit the body only for a wrong fact (path, id, command), never Write the whole file, and
+`→ decision:`; Edit the body only for a wrong fact (path, id, command), never Write the whole file, and
 run the checker again.
 
 ## Safety rules
@@ -647,10 +650,10 @@ If none: "No active blockers."
 to start. If any live item exists, step 1 is to judge it as `/resume-handoff` Step 3 describes
 (returned, running, or lost) before the rest. If genuinely unknown, say so and point at the sections that
 decide the direction. When a numbered step is a 🔴 user step, every later numbered step ends with
-`(독립)` or `(← n)`, as in:
+`(independent)` or `(← n)`, as in:
 1. 🔴 [what the user must do]
 2. [a step that waits for step 1] (← 1)
-3. [a step that does not wait] (독립)]
+3. [a step that does not wait] (independent)]
 
 ---
 
@@ -667,8 +670,8 @@ up, environment variable names that must be set. Names only, never values.]
 section is absent. One line per message the user gave right before `/handoff` and per argument of
 `/handoff`, as the checker shows it:]
 
-- 「[the user's own sentence]」 → 반영: [the title of a `## ` section of this file]
-- 「[the user's own sentence]」 → 무관
+- 「[the user's own sentence]」 → reflected: [the title of a `## ` section of this file]
+- 「[the user's own sentence]」 → unrelated
 
 ---
 
@@ -677,7 +680,7 @@ section is absent. One line per message the user gave right before `/handoff` an
 [Optional, always the last section. User messages only: omit it when no user message arrived after
 `/handoff` started. One line per message, no message skipped:]
 
-- 「[user message verbatim]」 → 결정: [what changed and how | 변경 없음]
+- 「[user message verbatim]」 → decision: [what changed and how | unchanged]
 ```
 
 ---
@@ -690,7 +693,7 @@ section is absent. One line per message the user gave right before `/handoff` an
 - "What Did NOT Work" and "Discarded Hypotheses" are the sections that pay for this command.
   Everything else can be rediscovered by reading the code; those two cannot.
 - "Exact Next Step" is written as an instruction on purpose. `/resume-handoff` briefs the user and
-  waits before acting unless it is run with the continue argument (`--c` or `계속`), so a direct next
+  waits before acting unless it is run with the continue argument (`--c` or `--continue`), so a direct next
   step does not cause the next session to run off on its own. Whether to continue is decided by
   that argument alone, never by anything written in this file.
 - Read the file back with `/resume-handoff`. It reads the whole file, so every section carries over.

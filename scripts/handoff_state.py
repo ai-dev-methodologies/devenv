@@ -23,10 +23,10 @@ is used as given; when its project differs, `continue:` is forced to no.
 
 An argument that is an existing file path is the selector as written, spaces included. The
 other arguments are split on whitespace. `--continue`, `--c`, or a token that is exactly
-`계속` (surrounding punctuation and quotes removed) sets `continue: yes`. Of the remaining
-words, the first date, path, or slug that names a handoff file is the selector; the rest are
-reported on one `WARNING: ignored argument words:` line. The handoff body is never evidence
-for `continue:`.
+CONTINUE_WORD, the legacy Korean continue word (surrounding punctuation and quotes removed), sets
+`continue: yes`. Of the remaining words, the first date, path, or slug that names a handoff file is
+the selector; the rest are reported on one `WARNING: ignored argument words:` line. The handoff
+body is never evidence for `continue:`.
 
 In the default mode, when CLAUDE_CODE_SESSION_ID is a UUID, `session id: <id>` and
 `transcript: <path | none (not found)>` follow the state block (also outside git); the path is the
@@ -141,7 +141,7 @@ PROJECTS_DIR = HOME / ".claude" / "projects"
 LEAN_FILE = HOME / ".claude" / "state" / "lean-mode.json"
 INTERNAL_ERROR = 4
 CONTINUE_FLAGS = ("--continue", "--c")
-CONTINUE_WORD = "계속"
+CONTINUE_WORD = "계속"  # the Korean continue word users type; accepted input (CHANGELOG 2026.11.10-5)
 TOKEN_PUNCT = ".,!?\"'「」"
 DETACHED_RE = re.compile(r"^detached\s+([0-9a-f]{7,40})\b")
 HEAD_FIELD_RE = re.compile(r"^\*\*([^*]+):\*\*\s*(.*)$")

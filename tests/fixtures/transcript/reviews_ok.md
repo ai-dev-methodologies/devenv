@@ -7,4 +7,4 @@
 
 ## Before Handoff
 
-- 「Review the parser plan before we merge it.」 → 반영: Decisions Made
+- 「Review the parser plan before we merge it.」 → reflected: Decisions Made

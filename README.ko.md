@@ -263,7 +263,7 @@ Run the devenv:handoff skill with these arguments, unchanged: $ARGUMENTS
 #### After Handoff
 `/handoff`가 시작된 뒤 사용자가 준 결정은 핸드오프 본문에 없다. 게이트 두 개가 이를 잃지 않게 한다.
 
-- 핸드오프 파일에는 머리 줄 `**Session:** <id>`와 맨 끝 선택 절 `## After Handoff`가 있다. `<id>`는 Step 0에서 `handoff_state.py`가 출력하는 `session id:` 줄 값이고, 없으면 `none`이다. `/handoff`가 시작된 뒤 사용자 메시지는 입력했든 대기열에 있었든 질문 창 답이든 이 절에 1줄씩 적는다: `- 「<사용자 원문>」 → 결정: <무엇을 어떻게 바꿨나>`. `→ 결정: 변경 없음`도 1줄이다. 본문은 다시 쓰지 않으며, 본문과 어긋나면 이 절이 우선한다.
+- 핸드오프 파일에는 머리 줄 `**Session:** <id>`와 맨 끝 선택 절 `## After Handoff`가 있다. `<id>`는 Step 0에서 `handoff_state.py`가 출력하는 `session id:` 줄 값이고, 없으면 `none`이다. `/handoff`가 시작된 뒤 사용자 메시지는 입력했든 대기열에 있었든 질문 창 답이든 이 절에 1줄씩 적는다: `- 「<사용자 원문>」 → decision: <무엇을 어떻게 바꿨나>`. `→ decision: unchanged`도 1줄이다. 본문은 다시 쓰지 않으며, 본문과 어긋나면 이 절이 우선한다.
 - 쓰는 쪽 게이트: `CLAUDE_CODE_SESSION_ID`가 UUID이면 `check_handoff.py`가 이 세션의 전사를 읽는다. 마지막 `/handoff` 뒤 사용자 메시지가 절에 실려 있지 않으면 `after-handoff`로 exit 1이고, 빠진 메시지를 원문 그대로 최대 5줄 출력한다. `**Session:**`이 없거나 이 세션의 id가 아니면 `contract-session`으로 exit 1이다. 다른 세션에서 옛 파일을 손으로 검사할 때는 검사기 앞에 `env -u CLAUDE_CODE_SESSION_ID`를 붙인다.
 - 재개 게이트: 파일의 `**Session:**`이 UUID이면 `handoff_state.py --resume`이 그 전사를 다시 읽는다. 절에 실리지 않은 메시지가 있으면 `--c`여도 `continue: no (unrecorded messages after handoff)`가 된다. 이때 `WARNING: N user message(s) after the last /handoff are not in the handoff file`를 출력한다. 브리핑은 `AFTER HANDOFF:` 블록으로 시작한다.
 - 판독 실패 때: 전사가 없거나 읽을 수 없거나 너무 크거나 형식을 모르거나 `/handoff` 입력이 없으면 두 게이트 모두 `WARNING: after-handoff messages not checked: <이유>`를 출력한다. 종료 코드와 `continue:`는 바뀌지 않는다.
@@ -273,9 +273,10 @@ Run the devenv:handoff skill with these arguments, unchanged: $ARGUMENTS
 #### Before Handoff와 Reviews
 선택 절 2개가 `/handoff` 직전에 세션이 알던 것을 남긴다.
 
-- `## Before Handoff`(`## After Handoff` 바로 앞): 마지막 `/handoff` 입력 직전 사용자 메시지(마지막 5개)와 그 입력의 인자마다 1줄이다. 줄은 `- 「<사용자 본인 문장>」 → 반영: <절 제목>` 또는 `- 「…」 → 무관`이다. `반영:` 뒤에는 파일의 `## ` 절 제목을 정확히 적는다.
+- `## Before Handoff`(`## After Handoff` 바로 앞): 마지막 `/handoff` 입력 직전 사용자 메시지(마지막 5개)와 그 입력의 인자마다 1줄이다. 줄은 `- 「<사용자 본인 문장>」 → reflected: <절 제목>` 또는 `- 「…」 → unrelated`이다. `reflected:` 뒤에는 파일의 `## ` 절 제목을 정확히 적는다.
 - `## Reviews`(`## Decisions Made` 바로 뒤): 세션의 검수 실행마다 1행이다: `- <에이전트 id | runId> · <타입> · <최종 판정 | running> · <채택 또는 기각, 1줄>`. 검수 실행은 타입의 마지막 `:` 뒤가 `review`·`critic`·`judge`를 담거나 `architect`·`verifier`와 같은 Agent, 그리고 모든 Workflow 실행이다.
-- 쓰는 쪽 게이트: `CLAUDE_CODE_SESSION_ID`가 UUID이면 `check_handoff.py`가 빠진 줄이나 행마다 `before-handoff` 또는 `reviews`로 exit 1이다. `Exact Next Step`의 번호 단계 중 🔴 사용자 단계 뒤에 `(독립)`이나 `(← n)`이 없는 단계가 있으면 `contract-next-step-deps`로 exit 1이다. 전사를 읽지 못하면 `WARNING: reviews not checked: <이유>`가 나오고 종료 코드는 바뀌지 않는다.
+- 쓰는 쪽 게이트: `CLAUDE_CODE_SESSION_ID`가 UUID이면 `check_handoff.py`가 빠진 줄이나 행마다 `before-handoff` 또는 `reviews`로 exit 1이다. `Exact Next Step`의 번호 단계 중 🔴 사용자 단계 뒤에 `(independent)`나 `(← n)`이 없는 단계가 있으면 `contract-next-step-deps`로 exit 1이다. 전사를 읽지 못하면 `WARNING: reviews not checked: <이유>`가 나오고 종료 코드는 바뀌지 않는다.
+- 2026.11.10-5부터 표지의 정본은 영어이고, 옛 한글 표지도 그대로 받는다. 대응은 `결정` → `decision`·`변경 없음` → `unchanged`·`반영` → `reflected`·`무관` → `unrelated`·`독립` → `independent`·`채택/기각` → `adopted/rejected`이다. 계속 인자 `계속`도 그대로 받는다.
 - 재개: `handoff_state.py --resume`이 `before handoff: N user message(s)`와 메시지(최대 6개)를 출력한다. 표시만 하므로 `continue:`는 바뀌지 않는다. 브리핑에는 `BEFORE HANDOFF:` 블록과 `REVIEWS:` 블록이 있다.
 - 크기: 검사기는 24 KiB를 넘으면 경고한다(`WARNING: handoff file is <N> KiB (over 24 KiB)`).
 
@@ -431,7 +432,7 @@ flowchart TD
 | `handoff_bytes` | `check_handoff.py`만 쓴다. 줄바꿈을 LF로 맞춘 뒤 검사한 본문의 UTF-8 바이트 수 |
 | `after_handoff_lines` | 쓰는 쪽 `check_handoff.py`만 쓴다. 마지막 `/handoff` 뒤 사용자 메시지 수다. 게이트가 돌지 않았으면 `null`이다 |
 | `before_handoff_lines` | 같은 쪽이다. Before Handoff 대상 메시지 수(`/handoff` 인자 포함, 0~6)다 |
-| `before_unrelated` | 같은 쪽이다. 맞춰진 Before Handoff 줄 중 `무관`으로 끝나는 수다 |
+| `before_unrelated` | 같은 쪽이다. 맞춰진 Before Handoff 줄 중 `unrelated`(또는 옛 표지)로 끝나는 수다 |
 | `attempt_n` | 같은 쪽이다. 이 세션이 이 핸드오프 파일을 검사한 시도 번호다 |
 | `elapsed_ms` | 같은 쪽이다. 마지막 `/handoff` 입력부터 이 검사까지 밀리초다 |
 | `reviews_found` | 같은 쪽이다. 전사에서 찾은 검수 실행 수다. 판독하지 못하면 `null`이다 |

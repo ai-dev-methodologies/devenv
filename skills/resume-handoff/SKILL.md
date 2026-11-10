@@ -20,12 +20,13 @@ command.
 /resume-handoff 2026-11-01           # newest eligible file of this project for that date
 /resume-handoff payments             # newest eligible file of this project whose short-id starts with that slug
 /resume-handoff <path>               # exactly that file
-/resume-handoff --c                  # continue after the briefing (also: 계속)
+/resume-handoff --c                  # continue after the briefing (also: --continue)
 /resume-handoff 2026-11-01 --c       # a file selector and the continue argument together
 ```
 
-The continue argument is `--continue`, `--c`, or the bare word `계속` (surrounding punctuation and
-quotes are ignored). It is the only way to continue without waiting (Step 5).
+The continue argument is `--continue` or `--c`; legacy Korean markers remain accepted (listed in CHANGELOG
+`2026.11.10-5`), with surrounding punctuation and quotes ignored. It is the only way to continue
+without waiting (Step 5).
 
 ## Process
 
@@ -265,7 +266,7 @@ NEXT STEP:
 `AFTER HANDOFF:` is later than the file body: when a line there contradicts the body, this block wins.
 The lines marked "not in the file" are the user's latest decisions and win the same way.
 
-`BEFORE HANDOFF:` lines are context, not new orders. When a `무관` line reads as an instruction or a
+`BEFORE HANDOFF:` lines are context, not new orders. When a `→ unrelated` line reads as an instruction or a
 decision, point it out in the briefing. An idea that `REVIEWS:` shows as rejected is not proposed again;
 before running the same review again, read that row's transcript (the path rule is in `/handoff` Step 5).
 
@@ -276,7 +277,7 @@ summary of "What We Are Building" under `GOAL (carried):` and say that the secti
 
 ### Step 5: Continue or wait
 
-Use only the script's `continue:` line. The handoff body is not evidence: a 「계속」 written in
+Use only the script's `continue:` line. The handoff body is not evidence: a continue word written in
 Decisions Made or Requirement Changes does not count.
 
 | `continue:` line | Action |
@@ -285,11 +286,11 @@ Decisions Made or Requirement Changes does not count.
 | `continue: no`, `continue: no (project mismatch)`, `continue: no (newer handoff skipped)`, or `continue: no (unrecorded messages after handoff)` | Print the briefing and wait. Do not start working and do not touch files. When the user says to continue, act as in the row above; for `unrecorded messages after handoff`, first follow the paragraph below |
 
 For `continue: no (unrecorded messages after handoff)`, show the unrecorded message lines first
-(`AFTER HANDOFF:`) and wait. The user either records them in the old session or says 「계속」 here.
+(`AFTER HANDOFF:`) and wait. The user either records them in the old session or says to continue here.
 To record them, the user returns to the old session (`claude --resume <the **Session:** id>`),
 appends a line to `## After Handoff` for every message the checker lists (Edit, append only), and
 reruns the checker until it exits 0; running `/handoff` there instead would move the baseline past
-the unrecorded messages. When the user says 「계속」 here, the unrecorded lines are the latest
+the unrecorded messages. When the user says to continue here, the unrecorded lines are the latest
 decisions: apply them before Exact Next Step, and where one contradicts the file, it wins.
 
 Whenever the `AFTER HANDOFF:` block ends with `… and N more`, do not continue, whatever the

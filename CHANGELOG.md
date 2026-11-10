@@ -4,6 +4,26 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are dates (`YYYY.MM.DD-N`), the
 same value that every run writes to the run log as `version`.
 
+## [2026.11.10-5] - 2026-11-10
+
+### Changed
+- The skills are English only. The handoff markers are English: `→ decision:` (`unchanged` when nothing
+  changed) in After Handoff, `→ reflected: <section title>` or `→ unrelated` in Before Handoff, `(independent)`
+  in Exact Next Step, and `<adopted/rejected>` in the checker's Reviews placeholder. The checker prints the
+  English markers in its failure lines.
+- The rest of the engine is English too: script output (`context_budget.py --table` prints `missing` and
+  `total`, `--selfcheck-settings` prints `entries: <n>`, `context_budget_check.py` prints English case names,
+  `[REFUSED]`, and `summary:`), docstrings, comments, the README, and the English docs. Korean remains only in
+  the Korean docs, the accepted Korean input words, and test data. Exit codes and verdicts do not change.
+- The bare continue word `계속` stays a supported continue argument; it is not deprecated. No English bare word
+  was added: `continue` would collide with a handoff file selected by a slug that starts with it, so the English
+  continue argument stays `--continue` or `--c`.
+
+### Deprecated
+- The legacy Korean markers remain accepted, so handoff files written before this release pass and resume as
+  before: `결정` (`decision`), `변경 없음` (`unchanged`), `반영` (`reflected`), `무관` (`unrelated`), `독립`
+  (`independent`), and `채택/기각` (`adopted/rejected`).
+
 ## [2026.11.10-4] - 2026-11-10
 
 ### Changed
@@ -72,7 +92,8 @@ describe the earlier standalone handoff commands.
 - Before Handoff gate. The user messages right before the last `/handoff` input (the last 5, counted
   past earlier `/handoff` inputs) and that input's arguments are recorded in a new optional section
   `## Before Handoff`, right before `## After Handoff` (last in the file when there is none). One line
-  per message: `- 「<the user's own sentence>」 → 반영: <section title>` or `- 「…」 → 무관`. `반영:` must
+  per message: `- 「<the user's own sentence>」 → reflected: <section title>` or `- 「…」 → unrelated` (written
+  with the Korean markers until 2026.11.10-5). `reflected:` must
   name a `## ` section of the file exactly (not Before Handoff or After Handoff). A message that opens
   with a quote of the assistant's output (`'…'`, `「…」`, or `>` lines of 40 characters or more, with 40
   characters or more of text after it) is recorded from the user's own sentence on; copying the quote
@@ -96,7 +117,7 @@ describe the earlier standalone handoff commands.
   briefing of `/resume-handoff` gets a `BEFORE HANDOFF:` block (after `AFTER HANDOFF:`) and a `REVIEWS:`
   block (after `DECIDED`). The Steps 0-3 call list is unchanged.
 - Next-step order. When a numbered step of `## Exact Next Step` is a 🔴 user step, every later numbered
-  step ends with `(독립)`, `(independent)`, `(← n)`, or `(<- n)`; otherwise the new failure code
+  step ends with `(independent)` (or its Korean marker), `(← n)`, or `(<- n)`; otherwise the new failure code
   `contract-next-step-deps` fires. It is checked on the writing side only, so older files still resume.
 - Run log: 7 new integer keys, always present (`null` when there is no value), so a line has 26 keys:
   `after_handoff_lines`, `before_handoff_lines`, `before_unrelated`, `attempt_n` (the try number at one
@@ -133,14 +154,14 @@ describe the earlier standalone handoff commands.
   the assistant's output is matched by its own sentence when 40 characters or more of it follow the
   quote, a message of 300 characters or less must be quoted whole, and a longer one is shown and
   matched as its first 259 characters, `…`, and its last 40 (it was the first 300 and `…`). A file written
-  with the old matching may need `계속` on resume.
+  with the old matching may need the continue word on resume.
 - `run_report.py`: the size statistics count the last direct check of each file directly under
   `~/.claude/handoffs/` (a resume's own check, a fixture, and a scratch path are left out); the limit is
   24 KiB, so the JSON key `over_16_kib` is now `over_24_kib` and the text reads `over 24 KiB`.
 - Run log version is `2026.11.10-1`.
 
 ### Known limits
-- A `무관` line is not gated; the briefing shows the original message so a misjudged one can be seen.
+- An `unrelated` line is not gated; the briefing shows the original message so a misjudged one can be seen.
 - Reviews of earlier sessions are not carried into `## Reviews`; their conclusions belong in
   `Decisions Made` or `Discarded Hypotheses`.
 
@@ -151,7 +172,8 @@ describe the earlier standalone handoff commands.
   file, and both gates compare against the session transcript. The handoff file has a header line
   `**Session:** <id>` (right after `**Continues:**`; `none` when there is no session id) and an optional
   last section `## After Handoff` with one line per user message:
-  `- 「<user message verbatim>」 → 결정: <what changed and how>` (`변경 없음` is also a line).
+  `- 「<user message verbatim>」 → decision: <what changed and how>` (`unchanged` is also a line; written with
+  the Korean markers until 2026.11.10-5).
   Typed messages, queued messages, and question-dialog answers all count.
 - Writing gate: when `CLAUDE_CODE_SESSION_ID` is a UUID, `check_handoff.py` reads this session's
   transcript and exits 1 with the new failure code `after-handoff` for each user message after the
@@ -257,7 +279,7 @@ describe the earlier standalone handoff commands.
 - First release of `/handoff` and `/resume-handoff` as a canonical, cross-platform repository with
   `install.py` (dry-run by default, `--yes` to apply, backups, rollback, `--python` to choose the
   interpreter written into the command files).
-- The continue decision comes only from the resume argument (`--c`, `--continue`, or the word `계속`).
+- The continue decision comes only from the resume argument (`--c`, `--continue`, or the Korean continue word).
 - Live work is carried in three fields (`Live subagents`, `Live runners`, `Live scheduled`), each item
   with `name (id)`, `does`, `decision`, `result`, `done-when`, `after-return`. The resume script
   judges each subagent from its newest transcript copy.

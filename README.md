@@ -1,6 +1,6 @@
 # devenv
 
-English | [한국어](README.ko.md)
+English | [Korean](README.ko.md)
 
 devenv is a Claude Code plugin that passes what one session knew to the next session and keeps the main session's context small with lean mode. This README owns the human-facing order of steps for devenv.
 
@@ -175,9 +175,9 @@ devenv has six skills. Each is called as `/devenv:<name>`.
 |---|---|---|
 | `/devenv:handoff` | Before handing the session over, or before the context fills | Writes one handoff file and reports its path and whether it is `Resume: ready` |
 | `/devenv:resume-handoff` | When starting a new session | Reads this project's most recent file, briefs, and waits |
-| `/devenv:resume-handoff --c` or `/devenv:resume-handoff 계속` | To keep working right after the briefing | After the briefing, runs `Exact Next Step` without asking |
+| `/devenv:resume-handoff --c` or `/devenv:resume-handoff --continue` | To keep working right after the briefing | After the briefing, runs `Exact Next Step` without asking |
 
-`계속` is a real input word and is accepted as written. Whether to continue is decided only by the argument given to the resume skill. A sentence in the body of the handoff file is not grounds.
+The Korean continue word (listed in CHANGELOG 2026.11.10-5) is a supported input word and is accepted as written. Whether to continue is decided only by the argument given to the resume skill. A sentence in the body of the handoff file is not grounds.
 
 With no argument, a date, or a slug, the only candidates are the files of the current project, which `handoff_state.py` reports on the `project key:` line. If a path is given and the file belongs to another project, the script prints `continue: no (project mismatch)`, does not continue, and warns.
 
@@ -207,7 +207,7 @@ A `~/.claude/commands/resume-handoff.md` written the same way gives `/resume-han
 1. Run `handoff_state.py --resume` once. The script decides the following.
    - With no argument, or with a date or slug, it picks only this project's handoffs (by `**Toplevel:**`).
      - If a path is given, that file is used. If it belongs to another project, the script prints `continue: no (project mismatch)`.
-   - It prints `continue: yes` only when the argument has `--c`, `--continue`, or `계속` (“continue” in Korean).
+   - It prints `continue: yes` only when the argument has `--c`, `--continue`, or the Korean word noted above.
    - If a file that is as new as or newer than the chosen one is dropped, it prints `WARNING: newer handoff skipped (<reason>): <file name>` and `continue: no (newer handoff skipped)`. Work does not continue even with `--c`. The reason is `no usable Exact Next Step`, `empty file`, `project unknown`, or `not valid UTF-8`. A file confirmed to belong to another project is not listed, and a path argument is not affected.
    - For each subagent it prints `live subagent: … -> returned / running? / lost / unknown`, at most 5 lines.
 2. Read the rules files (0 to 2), then read the whole handoff file.
@@ -257,7 +257,7 @@ The original goal and purpose, and the context still in progress, are kept acros
 #### After Handoff
 A decision the user gives after `/handoff` starts is not in the file body. Two gates keep it from being lost.
 
-- The handoff file has a header line `**Session:** <id>` (the `session id:` line that `handoff_state.py` prints in Step 0, or `none`) and an optional last section `## After Handoff`. Each user message after `/handoff` starts, whether typed, queued, or a dialog answer, gets one line there: `- 「<user message verbatim>」 → 결정: <what changed and how>`. `→ 결정: 변경 없음` (“no change”) is also a line. The body is not rewritten, and this section wins where it differs from the body.
+- The handoff file has a header line `**Session:** <id>` (the `session id:` line that `handoff_state.py` prints in Step 0, or `none`) and an optional last section `## After Handoff`. Each user message after `/handoff` starts, whether typed, queued, or a dialog answer, gets one line there: `- 「<user message verbatim>」 → decision: <what changed and how>`. `→ decision: unchanged` is also a line. The body is not rewritten, and this section wins where it differs from the body.
 - Writing gate: when `CLAUDE_CODE_SESSION_ID` is a UUID, `check_handoff.py` reads this session's transcript. It exits 1 with `after-handoff` when a user message after the last `/handoff` is not quoted in the section, and prints the missing messages verbatim (at most 5). It exits 1 with `contract-session` when `**Session:**` is missing or is not this session's id. To check an older file by hand from another session, run the checker with `env -u CLAUDE_CODE_SESSION_ID` in front.
 - Resume gate: when the file's `**Session:**` is a UUID, `handoff_state.py --resume` reads that transcript again. Messages that the section does not quote make `continue: no (unrecorded messages after handoff)`, even with `--c`, and print `WARNING: N user message(s) after the last /handoff are not in the handoff file`. The briefing starts with an `AFTER HANDOFF:` block.
 - Degrade: when the transcript is missing, unreadable, too large, or in an unknown format, or has no `/handoff` input, both gates print `WARNING: after-handoff messages not checked: <reason>`. Exit codes and `continue:` do not change.
@@ -267,9 +267,10 @@ A decision the user gives after `/handoff` starts is not in the file body. Two g
 #### Before Handoff and Reviews
 Two more optional sections keep what the session knew right before `/handoff`.
 
-- `## Before Handoff` (right before `## After Handoff`): one line per user message right before the last `/handoff` input (the last 5) and per argument of that input. A line is `- 「<the user's own sentence>」 → 반영: <section title>` or `- 「…」 → 무관`. `반영:` names a `## ` section of the file exactly.
+- `## Before Handoff` (right before `## After Handoff`): one line per user message right before the last `/handoff` input (the last 5) and per argument of that input. A line is `- 「<the user's own sentence>」 → reflected: <section title>` or `- 「…」 → unrelated`. `reflected:` names a `## ` section of the file exactly.
 - `## Reviews` (right after `## Decisions Made`): one row per review run of the session: `- <agent id | runId> · <type> · <final verdict | running> · <adopted or rejected, one line>`. A review run is an Agent whose type, after its last `:`, contains `review`, `critic`, or `judge` or equals `architect` or `verifier`, and every Workflow run.
-- Writing gate: when `CLAUDE_CODE_SESSION_ID` is a UUID, `check_handoff.py` exits 1 with `before-handoff` or `reviews` for each missing line or row. It exits 1 with `contract-next-step-deps` when a numbered `Exact Next Step` step after a 🔴 user step lacks `(독립)` or `(← n)`. When the transcript cannot be read, `WARNING: reviews not checked: <reason>` is printed and the exit code does not change.
+- Writing gate: when `CLAUDE_CODE_SESSION_ID` is a UUID, `check_handoff.py` exits 1 with `before-handoff` or `reviews` for each missing line or row. It exits 1 with `contract-next-step-deps` when a numbered `Exact Next Step` step after a 🔴 user step lacks `(independent)` or `(← n)`. When the transcript cannot be read, `WARNING: reviews not checked: <reason>` is printed and the exit code does not change.
+- Legacy Korean markers from before 2026.11.10-5 are still accepted; CHANGELOG lists them.
 - Resume: `handoff_state.py --resume` prints `before handoff: N user message(s)` with the messages (at most 6). It is display only, so `continue:` does not change. The briefing has a `BEFORE HANDOFF:` block and a `REVIEWS:` block.
 - Size: the checker warns above 24 KiB (`WARNING: handoff file is <N> KiB (over 24 KiB)`).
 
@@ -425,7 +426,7 @@ Every line has 26 keys. These twelve are the newest. A key without a value is `n
 | `handoff_bytes` | `check_handoff.py` only. The UTF-8 byte count of the checked text after newline normalization to LF |
 | `after_handoff_lines` | `check_handoff.py` on the writing side only. The number of user messages after the last `/handoff`. `null` when the gate did not run |
 | `before_handoff_lines` | The same side. The number of Before Handoff messages (the arguments of `/handoff` included, 0 to 6) |
-| `before_unrelated` | The same side. How many matched Before Handoff lines end in `무관` |
+| `before_unrelated` | The same side. How many matched Before Handoff lines end in `unrelated` (or its legacy marker) |
 | `attempt_n` | The same side. The try number at this handoff file in this session |
 | `elapsed_ms` | The same side. Milliseconds from the last `/handoff` input to this check |
 | `reviews_found` | The same side. The number of review runs found in the transcript. `null` when it could not be judged |

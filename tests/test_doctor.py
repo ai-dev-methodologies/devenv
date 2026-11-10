@@ -674,7 +674,7 @@ class DoctorSkillTests(test_docs.Base):
 
     def test_no_personal_traces(self):
         for n, line in enumerate(self.raw.splitlines(), 1):
-            self.assertIsNone(re.search("[가-힣]", line), f"{n}: {line}")
+            self.assertIsNone(re.search("[\uac00-\ud7a3]", line), f"{n}: {line}")
             self.assertNotIn("/Us" + "ers/", line)  # split so the public scan never matches this file
 
 

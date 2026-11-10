@@ -245,7 +245,8 @@ class ContinueTests(StateTestCase):
         yes = {"--c": "--c", "--continue": "--continue", "계속": "계속",
                "「계속」": "계속", "work --c": "--c",
                "계속.": "계속", "\"계속\"": "계속"}
-        no = ["계속하지 마", "계속해", "yesterday", "continued", "work"]
+        # bare `continue` is not a continue word: it stays a slug selector (`/resume-handoff continue-x`)
+        no = ["계속하지 마", "계속해", "yesterday", "continued", "work", "continue", "--cont"]
         for arg, token in yes.items():
             with self.subTest(arg=arg):
                 proc, found = self.continue_lines(arg)
@@ -1917,7 +1918,7 @@ class ResumeGateTests(StateTestCase):
         text = self.valid_handoff_text(toplevel=toplevel).replace(
             "**Continues:** none", f"**Continues:** none\n**Session:** {session}", 1)
         if quotes:
-            text += "\n## After Handoff\n\n" + "".join(f"- 「{q}」 → 결정: 변경 없음\n" for q in quotes)
+            text += "\n## After Handoff\n\n" + "".join(f"- 「{q}」 → decision: unchanged\n" for q in quotes)
         return text
 
     def resume(self, *args, **kw):

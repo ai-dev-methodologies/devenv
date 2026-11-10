@@ -187,10 +187,10 @@ If none: "No active blockers."
 to start. If any live item exists, step 1 is to judge it as `/resume-handoff` Step 3 describes
 (returned, running, or lost) before the rest. If genuinely unknown, say so and point at the sections that
 decide the direction. When a numbered step is a 🔴 user step, every later numbered step ends with
-`(독립)` or `(← n)`, as in:
+`(independent)` or `(← n)`, as in:
 1. 🔴 [what the user must do]
 2. [a step that waits for step 1] (← 1)
-3. [a step that does not wait] (독립)]
+3. [a step that does not wait] (independent)]
 
 ---
 
@@ -207,8 +207,8 @@ up, environment variable names that must be set. Names only, never values.]
 section is absent. One line per message the user gave right before `/handoff` and per argument of
 `/handoff`, as the checker shows it:]
 
-- 「[the user's own sentence]」 → 반영: [the title of a `## ` section of this file]
-- 「[the user's own sentence]」 → 무관
+- 「[the user's own sentence]」 → reflected: [the title of a `## ` section of this file]
+- 「[the user's own sentence]」 → unrelated
 
 ---
 
@@ -217,4 +217,4 @@ section is absent. One line per message the user gave right before `/handoff` an
 [Optional, always the last section. User messages only: omit it when no user message arrived after
 `/handoff` started. One line per message, no message skipped:]
 
-- 「[user message verbatim]」 → 결정: [what changed and how | 변경 없음]
+- 「[user message verbatim]」 → decision: [what changed and how | unchanged]

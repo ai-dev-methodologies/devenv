@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""세션 시작 때 로드되는 지시 파일의 바이트 표를 낸다. 합이 기준 바이트보다 크면 종료코드 2.
+"""Print the byte table of the instruction files loaded at session start. Exit code 2 when the total is over the cap.
 
-대상: ~/.claude/CLAUDE.md · ~/.claude/rules/*.md · <cwd>/CLAUDE.md · <cwd>/CLAUDE.local.md ·
-~/.claude/projects/<슬러그>/memory/MEMORY.md (슬러그 = cwd 절대 경로에서 영숫자 밖 글자를 - 로 바꾼 글자).
---record는 종료코드와 무관하게 ~/.claude/logs/context-budget.log에 표 1줄을 덧붙인다.
+Files: ~/.claude/CLAUDE.md · ~/.claude/rules/*.md · <cwd>/CLAUDE.md · <cwd>/CLAUDE.local.md ·
+~/.claude/projects/<slug>/memory/MEMORY.md (slug = the absolute cwd with every non-alphanumeric character as -).
+--record appends one line to ~/.claude/logs/context-budget.log whatever the exit code.
 """
 import argparse
 import json
@@ -63,7 +63,7 @@ def selfcheck_settings():
         for h in entry.get("hooks", []):
             if "context_budget.py" in h.get("command", ""):
                 n += 1
-    print(f"SessionStart context_budget.py 항목 {n}건")
+    print(f"SessionStart context_budget.py entries: {n}")
     return 0 if n == 1 else 1
 
 
@@ -83,8 +83,8 @@ def main():
     line, total = build_line(cwd, a.cap, rows)
     if a.table:
         for p, s in rows:
-            print(f"{s}\t{p}" if s is not None else f"없음\t{p}")
-        print(f"{total}\t합계 (cap={a.cap})")
+            print(f"{s}\t{p}" if s is not None else f"missing\t{p}")
+        print(f"{total}\ttotal (cap={a.cap})")
     if a.record:
         log = home_dir() / ".claude" / "logs" / "context-budget.log"
         log.parent.mkdir(parents=True, exist_ok=True)

@@ -24,7 +24,7 @@ OFF_LINE = ("!`" + STATE_CALL + " lean off --cwd ${CLAUDE_PROJECT_DIR} " + test_
 TRACES = [
     re.compile("Asia/" + "Seoul"),
     re.compile(r"\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\b"),
-    re.compile("[가-힣]"),  # the skills are written in English
+    re.compile("[\uac00-\ud7a3]"),  # the skills are written in English
     re.compile("explorer" + "-low|executor" + "-(med|high|max)|reviewer" + "-(high|xhigh)|judge" + "-max"),
     re.compile("doc" + "-reviewer|delegate" + "-first"),
     re.compile("fa" + "ble|myth" + "os", re.I),
