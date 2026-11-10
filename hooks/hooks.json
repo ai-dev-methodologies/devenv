@@ -1,0 +1,60 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.python}",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_session_start.py"]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.python}",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_read.py"]
+          }
+        ]
+      },
+      {
+        "matcher": "SubagentHandback",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.python}",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_return.py", "handback", "--data", "${CLAUDE_PLUGIN_DATA}"]
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.python}",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_bash.py", "--out-dir", "${CLAUDE_PLUGIN_DATA}/bash-out"]
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.python}",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_return.py", "stop"]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+#!/bin/sh
+# devenv-py: run a plugin script with the interpreter named on the command line.
+#   devenv-py <script> [args...] --py <interpreter>     (skills use this order)
+#   devenv-py --py <interpreter> <script> [args...]
+# The interpreter comes only from --py, never from an environment variable; a missing --py or a path that
+# is not an absolute executable file fails with one line on stderr. The script's exit code is returned.
+# Supported on macOS and Linux (POSIX sh); Windows is not supported.
+
+fail() {
+  echo "devenv-py: $1" >&2
+  exit 1
+}
+
+if [ "$#" -ge 2 ] && [ "$1" = "--py" ]; then
+  py=$2
+  shift 2
+else
+  [ "$#" -ge 2 ] || fail "usage: devenv-py <script> [args...] --py <interpreter>"
+  n=$#
+  eval "flag=\${$((n - 1))}"
+  eval "py=\${$n}"
+  [ "$flag" = "--py" ] || fail "missing --py <interpreter> as the last two arguments"
+  i=0
+  for arg do
+    i=$((i + 1))
+    [ "$i" -eq 1 ] && set --
+    [ "$i" -le $((n - 2)) ] && set -- "$@" "$arg"
+  done
+fi
+
+[ "$#" -ge 1 ] || fail "no script to run"
+case $py in
+  /*) ;;
+  *) fail "--py needs an absolute interpreter path, got '$py'" ;;
+esac
+[ -f "$py" ] && [ -x "$py" ] || fail "--py is not an executable file: $py"
+exec "$py" "$@"

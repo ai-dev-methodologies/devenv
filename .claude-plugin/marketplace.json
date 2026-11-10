@@ -1,0 +1,14 @@
+{
+  "name": "devenv",
+  "owner": {
+    "name": "devenv maintainers"
+  },
+  "description": "The devenv Claude Code plugin: session handoff, lean context mode, and the cycle and doctor skills.",
+  "plugins": [
+    {
+      "name": "devenv",
+      "source": "./",
+      "description": "Session handoff, lean context mode, and the cycle and doctor skills for Claude Code."
+    }
+  ]
+}

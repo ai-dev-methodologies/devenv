@@ -1,0 +1,14 @@
+{
+  "session_id": "fixture-session",
+  "transcript_path": "/tmp/fixture/transcript.jsonl",
+  "cwd": "/tmp/fixture/proj",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_id": "a0123456789abcdef",
+  "agent_type": "general-purpose",
+  "agent_transcript_path": "/tmp/fixture/subagents/agent-a0123456789abcdef.jsonl",
+  "last_assistant_message": "done",
+  "background_tasks": [],
+  "session_crons": []
+}

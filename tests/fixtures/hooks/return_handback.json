@@ -1,0 +1,12 @@
+{
+  "session_id": "fixture-session",
+  "transcript_path": "/tmp/fixture/transcript.jsonl",
+  "cwd": "/tmp/fixture/proj",
+  "permission_mode": "auto",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "SubagentHandback",
+  "tool_input": {"message": "done"},
+  "tool_use_id": "toolu_fixture",
+  "agent_id": "a0123456789abcdef",
+  "agent_type": "general-purpose"
+}

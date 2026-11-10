@@ -1,0 +1,20 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/devenv-fixture/transcript.jsonl",
+  "cwd": "/tmp/devenv-fixture/proj",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "sleep 100",
+    "description": "Print numbers 1 to 3"
+  },
+  "tool_response": {
+    "stdout": "",
+    "stderr": "",
+    "interrupted": true,
+    "isImage": false
+  },
+  "tool_use_id": "toolu_fixture",
+  "duration_ms": 12
+}
