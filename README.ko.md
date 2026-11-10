@@ -323,7 +323,7 @@ lean 모드는 사용자가 `/devenv:lean-off`를 직접 입력해 끈다. 모�
 | 사용자 층 | `~/.claude/devenv.local.md`(없으면 옛 이름 `~/.claude/handoff-rules.local.md`) | 이 사용자의 모든 프로젝트. 절 제한이 없다 |
 | 프로젝트 층 | `<프로젝트 최상위>/.claude/devenv.local.md`(없으면 옛 이름 `.claude/handoff-rules.local.md`) | 그 프로젝트. 목록의 덮어쓰기 지점만 쓴다 |
 
-`handoff_state.py`는 `user rules file:`와 `rules file:` 2줄로 두 규칙 파일의 경로를 알린다. 한 층에 두 이름이 모두 있으면 `WARNING: both .claude/devenv.local.md and .claude/handoff-rules.local.md exist; using devenv.local.md`를 낸다. 옛 이름의 파일은 핸드오프 지점 4개만 쓴다.
+`handoff_state.py`는 `user rules file:`와 `rules file:` 2줄로 두 규칙 파일의 경로를 알린다. 한 층에 두 이름이 모두 있으면 `WARNING: both .claude/devenv.local.md and .claude/handoff-rules.local.md exist; using devenv.local.md`를 낸다. 옛 이름의 파일은 핸드오프 지점 4개만 쓴다. 두 파일이 함께 있으면 `devenv.local.md`만 읽는다. 옛 파일의 내용을 새 파일로 옮기고 옛 파일을 지운다.
 
 ```mermaid
 flowchart TD
@@ -373,6 +373,12 @@ flowchart TD
 - `lean-limits` 값은 기준을 기본값의 4배까지만 올린다. 예: `read_lines` 1600, `return_lines` 120.
 - 더 큰 값은 상한으로 잘라 쓰고 경고를 낸다. `/devenv:doctor`는 이를 `rules-limits` 줄에 WARN으로 보고한다.
 - 상한을 두는 이유: lean 모드가 켜져 있어도 모델이 규칙 파일을 쓸 수 있다. 상한이 없으면 값 하나로 기준이 꺼진다.
+
+`doctor-settings` 절은 아래 형식으로 적는다.
+
+- 목록 줄 하나에 점으로 이은 settings 키 이름 하나를 적고, 파일 이름은 붙이지 않는다. 예: `- enabledPlugins.devenv@devenv`.
+- doctor는 `settings.json`과 `settings.local.json`을 합쳐 찾는다. 키 자체에 점이 든 이름도 찾는다. 예: `extraKnownMarketplaces.my.market`.
+- 형식이 다른 목록 줄은 건너뛰고, `settings-names` 줄이 그 줄 수를 경고한다.
 
 목록 밖의 `## ` 절이 있으면 `WARNING: rules file section outside override points: <제목>`을 낸다. 그 절은 적용되지 않는다. 경고는 종료 코드를 바꾸지 않는다.
 

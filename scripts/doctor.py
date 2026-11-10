@@ -21,7 +21,8 @@ Checks:
            read), rules-both-files, rules-sections, rules-limits, rules-ignored (rules_layer), paths
            (`~/.claude/` paths in the rules and instruction files exist; fenced code and `<…>`, `{…}`, `$`
            placeholders are left out; globs must match), settings-names (names listed under
-           `## doctor-settings` in the user rules layer exist in settings.json or settings.local.json),
+           `## doctor-settings` in the user rules layer exist in settings.json or settings.local.json;
+           one dotted name per list line, a key holding a dot is found too, other list lines warn),
            legacy-install (the older scripts in ~/.claude/scripts/), legacy-budget-hook (an older
            SessionStart context_budget.py entry in settings next to the engine's SessionStart hook writes
            the start load twice), start-load (over 48 KiB fails, with the three largest files), hook-errors
@@ -405,8 +406,13 @@ def check_paths(ctx):
     return "PASS", f"{total} paths in {len(files)} files exist"
 
 
+SETTINGS_NAME_RE = re.compile(r"(?:[-*]\s+)?`?([A-Za-z0-9_.\-@/]+)`?")  # one dotted name per line, no file name
+DROPPED_SHOWN = 40  # characters of the first unreadable line shown: the line may hold a value
+
+
 def doctor_settings_names(user: Path | None):
-    """Names listed under `## doctor-settings` of the user layer, or None when there is no such section."""
+    """(names, unreadable list lines) under `## doctor-settings` of the user layer, or None when there is no such
+    section. A list line (`- ` or `* `) that is not one name is unreadable; other prose lines are skipped."""
     if user is None:
         return None
     rl = sibling("rules_layer")
@@ -414,30 +420,39 @@ def doctor_settings_names(user: Path | None):
     for title, body in rl.sections(user):
         if rl.section_id(title, ("doctor-settings",)) is None:
             continue
-        found = [] if found is None else found
+        found = ([], []) if found is None else found
         fenced = False
         for line in body:
             if line.lstrip().startswith(("```", "~~~")):
                 fenced = not fenced
                 continue
-            m = None if fenced else re.fullmatch(r"(?:[-*]\s+)?`?([A-Za-z0-9_.\-]+)`?", line.strip())
+            if fenced:
+                continue
+            m = SETTINGS_NAME_RE.fullmatch(line.strip())
             if m:
-                found.append(m.group(1))
+                found[0].append(m.group(1))
+            elif re.match(r"[-*]\s", line.strip()):
+                found[1].append(line.strip())
     return found
 
 
 def has_name(data, dotted: str) -> bool:
-    for part in dotted.split("."):
-        if not isinstance(data, dict) or part not in data:
+    """`dotted` names a path of keys in `data`: the pieces between dots, left to right, where a key that itself holds
+    dots is matched by joining the next pieces (`a.b.c` finds data["a"]["b.c"] as well as data["a"]["b"]["c"])."""
+    def walk(node, rest) -> bool:
+        if not rest:
+            return True
+        if not isinstance(node, dict):
             return False
-        data = data[part]
-    return True
+        return any(".".join(rest[:k]) in node and walk(node[".".join(rest[:k])], rest[k:])
+                   for k in range(1, len(rest) + 1))
+    return walk(data, dotted.split("."))
 
 
 def check_settings_names(ctx):
     user, _, _ = rule_files(ctx)
-    names = doctor_settings_names(user)
-    if not names:
+    names, dropped = doctor_settings_names(user) or ([], [])
+    if not names and not dropped:
         return "SKIP", "no names listed under ## doctor-settings in the user rules layer"
     loaded = []
     for path in settings_files(ctx):
@@ -445,8 +460,14 @@ def check_settings_names(ctx):
         if isinstance(data, dict):
             loaded.append(data)
     missing = [n for n in names if not any(has_name(d, n) for d in loaded)]
+    warn = []
     if missing:
-        return "WARN", f"{len(missing)} of {len(names)} expected names missing from settings: " + ", ".join(missing)
+        warn.append(f"{len(missing)} of {len(names)} expected names missing from settings: " + ", ".join(missing))
+    if dropped:
+        warn.append(f"{len(dropped)} unreadable list line(s) under ## doctor-settings skipped "
+                    f"(one dotted name per line, no file name; first: {dropped[0][:DROPPED_SHOWN]})")
+    if warn:
+        return "WARN", "; ".join(warn)
     return "PASS", f"{len(names)} expected names present"
 
 

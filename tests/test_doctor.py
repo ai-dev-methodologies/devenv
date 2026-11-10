@@ -241,6 +241,47 @@ class SettingsNameTests(DoctorCase):
         self.write(self.claude / "settings.local.json", json.dumps({"statusLine": {"type": "command"}}))
         self.assertEqual("PASS", self.static()["settings-names"].status)
 
+    def test_names_with_at_and_slash_are_read(self):
+        self.write(self.claude / "devenv.local.md",
+                   "## doctor-settings\n- enabledPlugins.demo-kit@demo-market\n- `mcpServers.org/tool`\n")
+        self.write(self.claude / "settings.json", json.dumps({"enabledPlugins": {"demo-kit@demo-market": True}}))
+        self.write(self.claude / "settings.local.json", json.dumps({"mcpServers": {"org/tool": {}}}))
+        r = self.static()["settings-names"]
+        self.assertEqual(("PASS", "2 expected names present"), (r.status, r.evidence))
+        self.write(self.claude / "settings.local.json", json.dumps({}))
+        r = self.static()["settings-names"]
+        self.assertEqual("WARN", r.status)
+        self.assertIn("1 of 2 expected names missing from settings: mcpServers.org/tool", r.evidence)
+
+    def test_keys_holding_a_dot_are_found(self):
+        self.write(self.claude / "devenv.local.md", "## doctor-settings\n- extraKnownMarketplaces.my.market\n"
+                   "- extraKnownMarketplaces.my.market.source.repo\n- env.API_TOKEN\n")
+        settings = {"extraKnownMarketplaces": {"my.market": {"source": {"repo": "demo/demo"}}}, "env": {"API_TOKEN": "v"}}
+        self.write(self.claude / "settings.json", json.dumps(settings))
+        r = self.static()["settings-names"]
+        self.assertEqual(("PASS", "3 expected names present"), (r.status, r.evidence))
+        self.write(self.claude / "devenv.local.md", "## doctor-settings\n- extraKnownMarketplaces.my.other\n")
+        r = self.static()["settings-names"]
+        self.assertEqual("WARN", r.status)
+        self.assertIn("extraKnownMarketplaces.my.other", r.evidence)
+
+    def test_unreadable_list_lines_warn_with_count_and_a_cut_first_line(self):
+        long_line = "- env.SECRET_VALUE=abcdefghijklmnopqrstuvwxyz0123456789-tail-kept-out"
+        self.write(self.claude / "devenv.local.md", "## doctor-settings\nNames this doctor looks for.\n"
+                   f"- env.API_TOKEN\n{long_line}\n- settings.json env.X\n")
+        self.write(self.claude / "settings.json", json.dumps({"env": {"API_TOKEN": "v"}}))
+        r = self.static()["settings-names"]
+        self.assertEqual("WARN", r.status)
+        self.assertIn("2 unreadable list line(s) under ## doctor-settings", r.evidence)
+        self.assertIn(long_line[:40], r.evidence)
+        self.assertNotIn(long_line[:41], r.evidence)
+        self.assertNotIn("missing", r.evidence)
+        self.write(self.claude / "devenv.local.md", "## doctor-settings\n- settings.json env.X\n")
+        r = self.static()["settings-names"]
+        self.assertEqual("WARN", r.status)
+        self.assertIn("1 unreadable list line(s) under ## doctor-settings", r.evidence)
+        self.assertIn("- settings.json env.X", r.evidence)
+
 
 class LegacyTests(DoctorCase):
     def test_no_older_install_passes(self):

@@ -317,7 +317,7 @@ A later layer wins over an earlier layer. What a later layer does not write foll
 | User layer | `~/.claude/devenv.local.md` (else the older `~/.claude/handoff-rules.local.md`) | All projects of this user. No section limit |
 | Project layer | `<toplevel>/.claude/devenv.local.md` (else the older `.claude/handoff-rules.local.md`) | That project. Uses only the listed override points |
 
-`handoff_state.py` reports the paths of the two rules files on two lines, `user rules file:` and `rules file:`. When both names exist in one layer, `WARNING: both .claude/devenv.local.md and .claude/handoff-rules.local.md exist; using devenv.local.md` is printed. A file with the older name keeps the four handoff points only.
+`handoff_state.py` reports the paths of the two rules files on two lines, `user rules file:` and `rules file:`. When both names exist in one layer, `WARNING: both .claude/devenv.local.md and .claude/handoff-rules.local.md exist; using devenv.local.md` is printed. A file with the older name keeps the four handoff points only. When both files exist, only `devenv.local.md` is read, so move what the older file holds into it and remove the older file.
 
 ```mermaid
 flowchart TD
@@ -367,6 +367,12 @@ The project layer overrides only the points below, each with a `## <identifier>`
 - A `lean-limits` value can raise a limit to at most 4 times its default. Example: 1600 for `read_lines`, 120 for `return_lines`.
 - A larger value is cut to that cap with a warning. `/devenv:doctor` reports it as WARN on the `rules-limits` line.
 - Why the cap exists: the model can write the rules files while lean mode is on. Without a bound, one large value would turn the limits off.
+
+Write a `doctor-settings` section in this format:
+
+- One settings key name per list line, its parts joined by dots, with no file name in front. Example: `- enabledPlugins.devenv@devenv`.
+- The doctor looks each name up in `settings.json` and `settings.local.json` together. It also finds a key that holds a dot itself. Example: `extraKnownMarketplaces.my.market`.
+- A list line in another format is skipped, and the `settings-names` line warns with the number of such lines.
 
 If there is a `## ` section outside the list, `WARNING: rules file section outside override points: <heading>` is printed. That section is not applied. The warning does not change the exit code.
 

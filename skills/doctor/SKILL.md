@@ -39,6 +39,10 @@ itself failed. A live SKIP does not change the exit code.
   `dev-state`, `rules-*`, `paths`, `settings-names`, `legacy-*`, `start-load`, `hook-errors`): the files
   and values on this machine as the doctor read them. Evidence names keys, paths and counts, never a
   settings value.
+- `settings-names`: the `## doctor-settings` section of the user rules file lists one dotted settings path
+  per list line, with no file name in front (`- env.API_TOKEN`). Each name is looked up in settings.json and
+  settings.local.json together, and a key that holds a dot itself is found too. A list line in another
+  format is skipped and warned about with its count and the first 40 characters of the first such line.
 - `replay-*` lines: each registered hook command ran in a temporary folder with violating, clean and
   lean-off inputs, and was denied, replaced or let through as it should be. A replay line proves the
   script, interpreter, registered command line only; it does not prove that Claude Code calls the hook.

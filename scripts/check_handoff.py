@@ -143,7 +143,9 @@ ARGS_RE = re.compile(r"<command-args>(.*?)</command-args>", re.S)
 TRANSCRIPT_MAX_BYTES = 512 * 1024 * 1024
 TRANSCRIPT_KEYS = ('"user"', '"assistant"', "queued_command")  # only lines holding one are parsed
 COMMAND_TAGS = ("<command-", "<bash-", "<local-command-")  # a typed slash, ! or local command, not a message
-HANDOFF_COMMAND = "<command-name>/handoff</command-name>"
+PLUGIN_NAME = "devenv"  # = the `name` of .claude-plugin/plugin.json (pinned by a test)
+# a typed /handoff: the bare name, or the plugin-qualified one; another plugin's `<x>:handoff` is not ours
+HANDOFF_COMMANDS = ("<command-name>/handoff</command-name>", f"<command-name>/{PLUGIN_NAME}:handoff</command-name>")
 TIME_RE = re.compile(r"T(\d{2}:\d{2}:\d{2})")
 
 
@@ -712,6 +714,12 @@ def record_text(rec: dict) -> str:
     return answers_text(rec) or content_text(message.get("content") if isinstance(message, dict) else None)
 
 
+def handoff_command(text: str) -> "str | None":
+    """The HANDOFF_COMMANDS entry that occurs first in `text`, else None."""
+    found = [(text.find(cmd), cmd) for cmd in HANDOFF_COMMANDS if cmd in text]
+    return min(found)[1] if found else None
+
+
 def classify_record(rec: dict) -> "str | None":
     """"baseline" for a /handoff input, "message" for a message the user gave the session, else None.
     The first matching row decides (new-format-spec section 20)."""
@@ -738,7 +746,7 @@ def classify_record(rec: dict) -> "str | None":
     message = rec.get("message")
     content = message.get("content") if isinstance(message, dict) else None
     text = content_text(content).lstrip()
-    if not rec.get("isMeta") and text.startswith("<command-") and HANDOFF_COMMAND in text:
+    if not rec.get("isMeta") and text.startswith("<command-") and handoff_command(text):
         return "baseline"
     if rec.get("isMeta") or rec.get("promptSource") == "system":
         return None
@@ -802,10 +810,12 @@ def fold_review_run(rec: dict, n: int, launched: dict, runs: dict) -> "str | Non
 
 
 def handoff_args(rec: dict) -> "list[str]":
-    """[the non-empty `<command-args>` after the /handoff command name of a typed /handoff input], else []."""
+    """[the non-empty `<command-args>` after the handoff command name (HANDOFF_COMMANDS) of a typed /handoff input],
+    else []."""
     message = rec.get("message") if rec.get("type") == "user" else None
     text = content_text(message.get("content")) if isinstance(message, dict) else ""
-    m = ARGS_RE.search(text.split(HANDOFF_COMMAND, 1)[1]) if HANDOFF_COMMAND in text else None
+    command = handoff_command(text)
+    m = ARGS_RE.search(text.split(command, 1)[1]) if command else None
     return [m.group(1)] if m and m.group(1).strip() else []
 
 

@@ -2798,6 +2798,51 @@ class WindowTests(GateCase):
         self.assertEqual(got["baseline_ts"], "2026-11-09T07:09:00.000Z")
 
 
+def named_handoff_rec(name, args=None, ts=TS):
+    """A typed handoff input recorded under the command name `name`, with `<command-args>` when args is not None."""
+    text = f"<command-message>{name[1:]}</command-message>\n<command-name>{name}</command-name>"
+    return user_rec(text + (f"\n<command-args>{args}</command-args>" if args is not None else ""), ts=ts)
+
+
+class NamespacedHandoffTests(GateCase):
+    """A /handoff typed under the plugin name (`/devenv:handoff`) is the same baseline as `/handoff`; a handoff
+    command of another namespace is not."""
+    LATE = "2026-11-09T07:09:00.000Z"
+
+    def session(self, name, args="keep the plan"):
+        lines = [user_rec("one"), user_rec("two"), named_handoff_rec(name, args, ts=self.LATE), user_rec("late")]
+        got = self.mod.read_session(self.put_lines(lines))
+        return {key: got[key] for key in ("after", "before", "args", "baseline_ts", "msg_reason")}
+
+    def test_plugin_name_is_the_manifest_name(self):
+        manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(self.mod.PLUGIN_NAME, manifest["name"])
+
+    def test_plugin_form_gives_the_same_baseline_and_arguments(self):
+        plain = self.session("/handoff")
+        self.assertEqual(plain["args"], [("keep the plan", False, self.LATE)])
+        self.assertEqual([t for t, _, _ in plain["before"]], ["one", "two"])
+        self.assertEqual([t for t, _, _ in plain["after"]], ["late"])
+        self.assertEqual(self.session(f"/{self.mod.PLUGIN_NAME}:handoff"), plain)
+        rec = json.loads(named_handoff_rec(f"/{self.mod.PLUGIN_NAME}:handoff", "keep it"))
+        self.assertEqual(self.mod.classify_record(rec), "baseline")
+        self.assertEqual(self.mod.handoff_args(rec), ["keep it"])
+
+    def test_other_namespace_and_near_names_are_not_a_handoff_input(self):
+        for name in ("/demo-kit:handoff", f"/{self.mod.PLUGIN_NAME}:resume-handoff",
+                     f"/{self.mod.PLUGIN_NAME}:handoff-notes", "/handoff-notes"):
+            with self.subTest(name=name):
+                rec = json.loads(named_handoff_rec(name, "keep it"))
+                self.assertIsNone(self.mod.classify_record(rec))
+                self.assertEqual(self.mod.handoff_args(rec), [])
+                self.assertEqual(self.session(name)["msg_reason"], "no /handoff input in transcript")
+        lines = [user_rec("one"), handoff_rec("real args"), user_rec("two"), named_handoff_rec("/demo-kit:handoff", "x"),
+                 user_rec("three")]
+        got = self.mod.read_session(self.put_lines(lines))
+        self.assertEqual([t for t, _, _ in got["after"]], ["two", "three"])
+        self.assertEqual([t for t, _, _ in got["args"]], ["real args"])
+
+
 class AfterQuoteTests(GateCase):
     sid = SID
 

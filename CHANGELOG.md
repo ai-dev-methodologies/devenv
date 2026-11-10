@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are dates (`YYYY.MM.DD-N`), the
 same value that every run writes to the run log as `version`.
 
+## [2026.11.10-3] - 2026-11-10
+
+### Fixed
+- A handoff typed under the plugin name (`/devenv:handoff`) now counts as a handoff input, the same as
+  `/handoff`, for the After Handoff and Before Handoff checks and its arguments. Another plugin's `<name>:handoff` is not.
+- Doctor `settings-names`: a name may hold `@` and `/` (`enabledPlugins.devenv@devenv`), a key that holds a dot
+  itself is found (`extraKnownMarketplaces.my.market`), and a list line under `## doctor-settings` that is not one
+  name now warns with the count and the first 40 characters of the first such line instead of being dropped.
+- Both READMEs and the doctor skill state the `## doctor-settings` line format; the READMEs say to move the
+  older rules file's content into `devenv.local.md` and remove the older file when both files exist.
+
 ## [2026.11.10-2] - 2026-11-10
 
 First release as the devenv Claude Code plugin. The handoff pair moves into it; entries below this one
